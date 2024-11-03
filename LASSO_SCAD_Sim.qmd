@@ -14,6 +14,8 @@ First, the SCAD and LASSO methods are introduced for variable selection in the C
 
 # Background
 
+INTODUCE Survival analysis and data
+
 INTRODUCE COX'S MODEL HERE
 
 The following is taken from [@fan2002variable]. Consider independent samples $(\mathbf{x}_i,Y_i)$ with conditional density $f_i(y_i;\mathbf{X}^T_i,\mathbf{\beta})$. Let $\ell_i=\text{log}f_i$. Then a general form of penalized likelihood is given by
@@ -72,9 +74,9 @@ lasso_scad_cox_sim = function(N,n){   # N:simulation times; n:data pts
   Beta_part_all = matrix(NA,N,p)
   Beta_LASSO_all = matrix(NA,N,p)
 
-  ME_part_2 = rep(NA,N) # To store model error
+  # ME_part_2 = rep(NA,N) # To store model error
   ME_SCAD = rep(NA,N)
-  Beta_part_all_2 = matrix(NA,N,p)
+  # Beta_part_all_2 = matrix(NA,N,p)
   Beta_SCAD_all = matrix(NA,N,p)
 
 
@@ -162,17 +164,18 @@ lasso_scad_cox_sim = function(N,n){   # N:simulation times; n:data pts
   )
 }
 
-set.seed(123)
 
+set.seed(87460945)
 lasso_scad_cox_sim_75.out <- lasso_scad_cox_sim(N = 100, n = 75)
 lasso_scad_cox_sim_100.out <- lasso_scad_cox_sim(N = 100, n = 100)
 ```
-
-```{r,echo=FALSE}
+```{r}
 bic_simulation <- function(N, n) {
   Beta <- c(0.8, 0, 0, 1, 0, 0, 0.6, 0)  # True coefficients
   p <- length(Beta) 
   Beta_part_all = matrix(NA, N, p)
+  Beta_AIC_all = matrix(NA, N, p)
+  Beta_BIC_all = matrix(NA, N, p)
   ME_part = rep(NA, N)
 
   combinations_list <- lapply(1:p, function(r) {
@@ -250,93 +253,46 @@ bic_simulation <- function(N, n) {
     if (is.finite(AICs[best_AIC_idx])) {
       best_fit_AIC[[t]] <- fits[[best_AIC_idx]]
       best_fit_AIC_indices[[t]] <- combination_indices[[best_AIC_idx]]
+      names(best_fit_AIC_indices[[t]]) <- paste0("Beta_", combination_indices[[best_AIC_idx]])
       best_AICs[t] <- AICs[best_AIC_idx]
-    } else {
-      best_fit_AIC[[t]] <- NULL
-      best_fit_AIC_indices[[t]] <- NULL
-      best_AICs[t] <- NA
+      
+      # Store the coefficients in Beta_AIC_all
+      Beta_AIC_all[t, best_fit_AIC_indices[[t]]] <- coef(best_fit_AIC[[t]])
     }
 
     if (is.finite(BICs[best_BIC_idx])) {
       best_fit_BIC[[t]] <- fits[[best_BIC_idx]]
       best_fit_BIC_indices[[t]] <- combination_indices[[best_BIC_idx]]
+      names(best_fit_BIC_indices[[t]]) <- paste0("Beta_", combination_indices[[best_BIC_idx]])
       best_BICs[t] <- BICs[best_BIC_idx]
-    } else {
-      best_fit_BIC[[t]] <- NULL
-      best_fit_BIC_indices[[t]] <- NULL
-      best_BICs[t] <- NA
-    }
-
-    # Step 7: Compute Model Error for AIC and BIC models
-    if (!is.null(best_fit_AIC_indices[[t]])) {
-      selected_indices_AIC <- best_fit_AIC_indices[[t]]
-      Beta_AIC <- numeric(p)
-      Beta_AIC[selected_indices_AIC] <- coef(best_fit_AIC[[t]])
-      ME_AIC[t] <- mean((exp(-x %*% Beta_AIC) - exp(-x %*% Beta))^2)
-    } else {
-      ME_AIC[t] <- NA
-    }
-
-    if (!is.null(best_fit_BIC_indices[[t]])) {
-      selected_indices_BIC <- best_fit_BIC_indices[[t]]
-      Beta_BIC <- numeric(p)
-      Beta_BIC[selected_indices_BIC] <- coef(best_fit_BIC[[t]])
-      ME_BIC[t] <- mean((exp(-x %*% Beta_BIC) - exp(-x %*% Beta))^2)
-      ME_part[t] <- mean((exp(-x %*% Beta_part_all[t, ]) - exp(-x %*% Beta))^2)
-    } else {
-      ME_BIC[t] <- NA
+      
+      # Store the coefficients in Beta_BIC_all
+      Beta_BIC_all[t, best_fit_BIC_indices[[t]]] <- coef(best_fit_BIC[[t]])
     }
 
     t <- t + 1
   }
 
-  correct_zero_AIC <- rep(0, N)
-  correct_zero_BIC <- rep(0, N)
-  incorrect_nonzero_AIC <- rep(0, N)
-  incorrect_nonzero_BIC <- rep(0, N)
+  # Calculate mean and standard deviation for beta_1, beta_4, and beta_7 for AIC and BIC
+  beta_1_stats_AIC <- c(mean = mean(Beta_AIC_all[, 1], na.rm = TRUE), sd = sd(Beta_AIC_all[, 1], na.rm = TRUE))
+  beta_4_stats_AIC <- c(mean = mean(Beta_AIC_all[, 4], na.rm = TRUE), sd = sd(Beta_AIC_all[, 4], na.rm = TRUE))
+  beta_7_stats_AIC <- c(mean = mean(Beta_AIC_all[, 7], na.rm = TRUE), sd = sd(Beta_AIC_all[, 7], na.rm = TRUE))
+  
+  beta_1_stats_BIC <- c(mean = mean(Beta_BIC_all[, 1], na.rm = TRUE), sd = sd(Beta_BIC_all[, 1], na.rm = TRUE))
+  beta_4_stats_BIC <- c(mean = mean(Beta_BIC_all[, 4], na.rm = TRUE), sd = sd(Beta_BIC_all[, 4], na.rm = TRUE))
+  beta_7_stats_BIC <- c(mean = mean(Beta_BIC_all[, 7], na.rm = TRUE), sd = sd(Beta_BIC_all[, 7], na.rm = TRUE))
+  
+  beta_stats <- data.frame(beta_1_stats_AIC, beta_4_stats_AIC, beta_7_stats_AIC, beta_1_stats_BIC, beta_4_stats_BIC, beta_7_stats_BIC)
 
-  for (i in 1:N) {
-    true_zero_indices <- which(Beta == 0)
-    true_nonzero_indices <- which(Beta != 0)
-    
-    # For AIC
-    if (!is.null(best_fit_AIC_indices[[i]])) {
-      selected_indices_AIC <- best_fit_AIC_indices[[i]]
-      excluded_indices_AIC <- setdiff(1:length(Beta), selected_indices_AIC)
-      correct_zero_AIC[i] <- sum(excluded_indices_AIC %in% true_zero_indices)
-      incorrect_nonzero_AIC[i] <- sum(excluded_indices_AIC %in% true_nonzero_indices)
-    }
-    
-    # For BIC
-    if (!is.null(best_fit_BIC_indices[[i]])) {
-      selected_indices_BIC <- best_fit_BIC_indices[[i]]
-      excluded_indices_BIC <- setdiff(1:length(Beta), selected_indices_BIC)
-      correct_zero_BIC[i] <- sum(excluded_indices_BIC %in% true_zero_indices)
-      incorrect_nonzero_BIC[i] <- sum(excluded_indices_BIC %in% true_nonzero_indices)
-    }
-  }
-
-  avg_correct_zero_AIC <- mean(correct_zero_AIC)
-  avg_correct_zero_BIC <- mean(correct_zero_BIC)
-
-  avg_incorrect_nonzero_AIC <- mean(incorrect_nonzero_AIC)
-  avg_incorrect_nonzero_BIC <- mean(incorrect_nonzero_BIC)
-
-  tb2_AIC_BIC <- data.frame(zero_coeff_AIC = avg_correct_zero_AIC, zero_coeff_BIC = avg_correct_zero_BIC, incorrect_nonzero_AIC = avg_incorrect_nonzero_AIC, incorrect_nonzero_BIC = avg_incorrect_nonzero_BIC)
-  tb3_AIC_BIC <- data.frame(MRME_AIC = median(ME_AIC / ME_part, na.rm = TRUE) * 100, MRME_BIC = median(ME_BIC / ME_part, na.rm = TRUE) * 100)
-
-  beta_1_stats <- c(mean = mean(Beta_part_all[, 1], na.rm = TRUE), sd = sd(Beta_part_all[, 1], na.rm = TRUE))
-  beta_4_stats <- c(mean = mean(Beta_part_all[, 4], na.rm = TRUE), sd = sd(Beta_part_all[, 4], na.rm = TRUE))
-  beta_7_stats <- c(mean = mean(Beta_part_all[, 7], na.rm = TRUE), sd = sd(Beta_part_all[, 7], na.rm = TRUE))
-
-  beta_stats <- data.frame(beta_1_stats, beta_4_stats, beta_7_stats)
-
-  list(tb2_AIC_BIC = tb2_AIC_BIC, tb3_AIC_BIC = tb3_AIC_BIC, beta_stats = beta_stats)
+  list(beta_stats = beta_stats)
 }
 
+# Run the simulation
 aic_bic_simulation_75.out <- bic_simulation(N = 100, n = 75)
 aic_bic_simulation_100.out <- bic_simulation(N = 100, n = 100)
 ```
+
+
 
 ```{r,echo=FALSE}
 library(knitr)
@@ -426,7 +382,7 @@ This data is from the Mayo Clinic trial in PBC conducted between 1974 and 1984. 
 The variables are as follows:
 
 | Variable | Description |
-|--------------|----------------------------------------------------------|
+|-----------------|-------------------------------------------------------|
 | age | in years |
 | albumin | serum albumin (g/dl) |
 | alk.phos | alkaline phosphatase (U/liter) |
@@ -476,7 +432,6 @@ grid3d("y")
 grid3d("z")
 
 ```
-
 
 # References
 
