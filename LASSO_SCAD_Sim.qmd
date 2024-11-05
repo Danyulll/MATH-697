@@ -168,8 +168,6 @@ lasso_scad_cox_sim = function(N,n){   # N:simulation times; n:data pts
 set.seed(87460945)
 lasso_scad_cox_sim_75.out <- lasso_scad_cox_sim(N = 100, n = 75)
 lasso_scad_cox_sim_100.out <- lasso_scad_cox_sim(N = 100, n = 100)
-
-lasso_scad_cox_sim_100.out
 ```
 
 ```{r,echo=FALSE}
@@ -482,24 +480,10 @@ kable(data, col.names = c("Method", "Beta1 SD", "Beta4 SD", "Beta7 SD"))
 
 # Application
 
-# Data
-
-```{r}
-library(survival)
-data(pbc)
-kable(head(pbc))
-```
-
-Here is the description of the dataset from the R help file:
-
-Primary biliary cholangitis is an autoimmune disease leading to destruction of the small bile ducts in the liver. Progression is slow but inexhortable, eventually leading to cirrhosis and liver decompensation. The condition has been recognised since at least 1851 and was named "primary biliary cirrhosis" in 1949. Because cirrhosis is a feature only of advanced disease, a change of its name to "primary biliary cholangitis" was proposed by patient advocacy groups in 2014.
-
-This data is from the Mayo Clinic trial in PBC conducted between 1974 and 1984. A total of 424 PBC patients, referred to Mayo Clinic during that ten-year interval, met eligibility criteria for the randomized placebo controlled trial of the drug D-penicillamine. The first 312 cases in the data set participated in the randomized trial and contain largely complete data. The additional 112 cases did not participate in the clinical trial, but consented to have basic measurements recorded and to be followed for survival. Six of those cases were lost to follow-up shortly after diagnosis, so the data here are on an additional 106 cases as well as the 312 randomized participants.
-
-The variables are as follows:
+Next we consider the applications of LASSO, SCAD, AIC, and BIC variable selection methods on real data. We use the Mayo Clinic Primary Biliary Cholangitis (PBC) data. PBC is an autoimmune disease which damages the liver's bile ducts leading to cirrhosis and eventually death [@therneau2000cox]. The dataset contains 418 cases of PBC, 312 of which are from a randomized trial and 106 cases of patients not present in the trial but agreed to be tracked. The data used are available in the `survival` R package under the variable `pbc`. A table of covariates present in the data is available below [@therneau2015package].
 
 | Variable | Description |
-|-----------------|-------------------------------------------------------|
+|------------------|------------------------------------------------------|
 | age | in years |
 | albumin | serum albumin (g/dl) |
 | alk.phos | alkaline phosphatase (U/liter) |
@@ -510,7 +494,6 @@ The variables are as follows:
 | copper | urine copper (ug/day) |
 | edema | 0 no edema, 0.5 untreated or successfully treated, 1 edema despite diuretic therapy |
 | hepato | presence of hepatomegaly or enlarged liver |
-| id | case number |
 | platelet | platelet count |
 | protime | standardized blood clotting time |
 | sex | m/f |
@@ -520,37 +503,60 @@ The variables are as follows:
 | time | number of days between registration and the earlier of death, transplantation, or study analysis in July, 1986 |
 | trt | 1/2/NA for D-penicillamine, placebo, not randomized |
 | trig | triglycerides (mg/dl) |
+: Description of the  Mayo Clinic Primary Biliary Cholangitis dataset.
 
 ```{r}
-# Install and load the necessary package
-if (!require("rgl")) {
-  install.packages("rgl")
-}
-library(rgl)
+library(survival)
+library(glmnet)
 
-# Define the range of theta
-theta <- seq(-2, 2, length.out = 1000)  # Adjust the range as needed
+data("pbc", package = "survival")
+pbc <- na.omit(pbc)
 
-# Calculate x, y, z based on the parametric equations
-x <- 4 * theta
-y <- -6 * theta^2
-z <- 4 * theta^3
+y <- with(pbc, Surv(time, status == 2))  # status == 2 indicates death
+x <- data.matrix(pbc[, !(names(pbc) %in% c("time", "status", "id"))])
 
-# Plot the 3D curve
-plot3d(x, y, z, type = "l", col = "blue", lwd = 2,
-       xlab = expression(x == 4 * theta),
-       ylab = expression(y == -6 * theta^2),
-       zlab = expression(z == 4 * theta^3),
-       main = "Parameter Space Plot")
+# Use cross validation to get best lambda
+cv_lasso_cox <- cv.glmnet(x, y, family = "cox", alpha = 1)
+best_lambda <- cv_lasso_cox$lambda.min
 
-# Add grid and axes labels
-grid3d("x")
-grid3d("y")
-grid3d("z")
-
+# Fit optimal model
+final_lasso_cox <- glmnet(x, y, family = "cox", alpha = 1, lambda = best_lambda)
+coef(final_lasso_cox)
 ```
+
+```{r}
+library(ncvreg)
+scad_cox_path <- ncvsurv(x, y, penalty = "SCAD")
+
+cv_scad_cox <- cv.ncvsurv(x, y, penalty = "SCAD")
+
+best_lambda_scad <- cv_scad_cox$lambda.min
+
+coef(scad_cox_path, lambda = best_lambda_scad)
+```
+
 
 # References
 
 ::: {#refs}
 :::
+
+# Appendix
+
+EXPLAIN LASSO DIAGNOSTIC PLOTS HERE
+```{r}
+# Plot the coefficient paths for the lasso-penalized Cox model
+plot(cv_lasso_cox$glmnet.fit, xvar = "lambda", label = TRUE)
+plot(cv_lasso_cox)
+# title("LASSO Coefficient Paths for Cox Model")
+```
+
+
+EXPLAIN SCAD DIAGNOSTIC PLOTS HERE
+
+```{r}
+plot(cv_scad_cox)
+plot(scad_cox_path)
+```
+
+
