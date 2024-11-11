@@ -1,0 +1,887 @@
+---
+title: "MATH 697 Report"
+author: "Daniel Krasnov"
+bibliography: bib.bib
+execute: 
+  cache: true
+  echo: false
+  warning: false
+abstract: |
+  This is a brief summary or abstract of the document. It gives an overview of the main points,
+  stuff and stuff.
+format: pdf
+number-sections: true
+editor: visual
+---
+
+# Overview of Survival Analysis
+
+<!-- Consider adding a citation here from [@kleinbaum1996survival] -->
+
+## Introduction {#sec-introduction}
+
+Survival Analysis (SA) concerns itself with the analysis of data whose research question is concerned with the time until an event occurs. The time leading up to the event is known as the survival time and the event itself is known as a failure. The survival time can be measured on any time scale, years, months, days, etc., and the failure is any event of interest, say when a subject enters remission or dies. For the purposes of this report we assume there is one event of interest at a time, however there could be multiple and these are known as competing risk problems.
+
+SA often must deal with censored data. Censored refers to measures of survival time that are inaccurate. If a the subject experiences failure after the study has completed, this is called right censored; if the subject experiences failure at or before the measured time, it is called left-censored; if the subject experienced failure in a known interval but we do not know the exact time, it is called interval-censored.
+
+We commonly make three assumptions about survival data: independent censoring, random censoring, and non-informative censoring. Independent censoring means that if we take a subset of subjects, censoring is random within that subset. Random censoring means both subjects that have been censored and have not been censored share the same failure rate. Non-informative censoring means the distribution of survival times gives no information about the distribution of censorship times.
+
+In SA there exist two functions of primary interest. Let $T$, $T \geq 0$, be a random variable denoting a subject's survival time. Also, let $d \in\{0,1\}$ be an indicator random variable where $0$ denotes censorship and $1$ denotes failure. Then the survivor function, denoted $S(t)$, and hazard function, denoted $h(t)$, are the greatest subject of study in SA. Mathematically this functions are defined as [@kleinbaum1996survival]
+
+\begin{align}
+    S(t) &= \text{exp}\left\{-\int^t_0 h(u) du\right\}, \\
+      h(t) &= \lim_{\Delta t \to 0}\frac{P(t\leq T < t + \Delta t | T \geq t)}{\Delta t} = -\left[\frac{d S(t) / dt}{s(t)}\right]. \label{eq:SH_rel}
+\end{align}
+
+Here we see that $S(t)$ gives us $P(T > t)$ and $h(t)$ gives the instantaneous potential for failure given the subject has survived until time $t$. It is important to note that $h(t)$ is a rate, not a probability, and as the subject accumulates more hazard, the lower the probability of survival.
+
+Overall there are three goals in SA: the estimation and interpretation of survivor and hazard functions, the comparison of survivor and hazard functions, and the effect of covariates on the survival time.
+
+## Kaplan-Meir Curves and Hypothesis Testing
+
+Consider a SA study where we are interested in assessing the difference in survival for subjects in a treatment group and a placebo group. One way we may assess this is to look at the survivor function $S(t)$. To estimate the survivor function we employ the Kaplan-Meier (KM) Curves. KM curves estimate the survivor function according to the following equations [@kleinbaum1996survival,@d2021methods]:
+
+\begin{align}
+    \hat{S}(t_{(f)})&=\prod^{f}_{i=1}\hat{P}(T>t_{(i)}|T\geq t_{(i)}), \\
+     \hat{S}(t_{(f)})&= \prod^f_{i=1}\frac{n_f-d_f}{n_f} \label{eq:KM_estimation}
+\end{align}
+
+where the KM survival probability at failure time $t_{(f)}$ is the survival probability of the previous failure time multiplied by the conditional probability of surviving past $t_{(f)}$ given the subject has already survived to at least $t_{(f)}$. These probabilities are simply estimated using sample proportions. That is, let $n_f$ be the number of subjects at risk at time $t_f$ and $d_f$ be the number of subjects who fail at time $t_f$. Then $\eqref{eq:KM_estimation}$ uses the sample proportion to estimate the conditional probabilities.
+
+Confidence intervals for the KM curve are given by
+
+\begin{align}
+\hat{S}_{KM}(t)&\pm 1.96\sqrt{\hat{\text{Var}}[\hat{S}_{KM}(t)]}, \\
+ \text{Var}[\hat{S}_{KM}(t)]&=(\hat{S}_{KM}(t))^2\sum_{f:t_{(f)},\leq t}\left[\frac{m_f}{n_f(n_f-m_f)}\right]
+\end{align}
+
+where $t_{(f)}$ is the $f$th ordered failure time, $m_f$ is the number of failures at $t_{(f)}$, and $n_f$ is the number of subjects at still at risk at time $t_{(f)}$. We also have access to a confidence interval for the median survival time. Let $M$ be the true unknown median survival time. Then the following holds asymptotically:
+
+\begin{equation}
+    \frac{(\hat{S}_{KM}(M)-0.5)^2}{\hat{\text{Var}}[\hat{S}_{KM}(M)]}\sim\chi^2_1.
+\end{equation}
+
+From this a 95% confidence interval for the median survival time is given by
+
+\begin{equation}
+(\hat{S}_{KM}-0.5)^2<3.84\hat{\text{Var}}[\hat{S}_{KM}(t)].
+\end{equation}
+
+As an example of KM curves, consider the toy dataset with 2 groups as shown in @tbl-one. Calculating the KM cuves leads to the following estimate of $\hat{S}(t)$ for each group as seen in @fig-one.
+
+```{r}
+#| label: tbl-one
+
+library(knitr)
+toy_data <- data.frame(
+  time = c(5, 8, 12, 4, 6, 15, 20, 9, 10, 8, 13),
+  status = c(1, 1, 0, 1, 1, 0, 1, 1, 0, 1, 1), # 1 = event occurred, 0 = censored
+  group = c("A", "A", "B", "B", "A", "A", "B", "A", "B", "B", "A")
+)
+kable(toy_data, caption = "Toy dataset for KM curve example.")
+```
+
+```{r}
+#| label: fig-one
+#| fig-cap: "Explain Kaplan-Meir survival function estimate. Shaded regions indicate confidence intervals for each group."
+
+library(survival)
+library(survminer)
+
+km_fit <- survfit(Surv(time, status) ~ group, data = toy_data)
+ggsurvplot(km_fit, data = toy_data, conf.int = TRUE)
+```
+
+After obtaining estimates of the survival function, the next logical question is whether these KM curves statistically differ across strata. To do this, we employ the log-rank test, a large-sample chi-square test. The log-rank test statistic for two groups is given by
+
+\begin{equation}
+\text{Log-rank statistic} = \frac{(O_1-E_1)^2}{\text{Var}(O_1-E_1)} \sim \chi^2_1,
+\end{equation} where \begin{align}
+e_{1f}&=\left(\frac{n_{1f}}{n_{1f}+n_{2f}}\right)\times (m_{1f} + m_{2f}),\\
+e_{2f}&=\left(\frac{n_{2f}}{n_{1f}+n_{2f}}\right)\times (m_{1f} + m_{2f}),\\
+O_i - E_i &=    \sum^n_{f=1}(m_{if}-e_{if}), \\
+  \text{Var}(O_i-E_i) &= \sum_j\frac{n_{1f}n_{2f}(m_{1f}+m_{2f})(n_{1f}+n_{2f}-m_{1f}-m_{2f})}{(n_{1f}+n_{2f})^2(n_{1f}+n_{2f}-1)},
+\end{align}
+
+and $n_{1f}$ and $n_{2f}$ are the numbers of subjects in the risk set for each group and $m_{1f}$ and $m_{2f}$ are the number of subjects failing in that group. Under the null hypothesis of no overall difference between the survival curves, the test statistics is ch-squared distributed with one degree of freedom. If we instead wish to test multiple KM curves at once, the test statistic becomes the matrix product
+
+\begin{align}
+    \text{Log-rank statistic}&=\mathbf{d^TV^{-1}d}\sim \chi^2_{G-1},\\
+    \mathbf{d} &= (O_1-E_1,\dots,O_{G-1}-E_{G-1})^T,\\
+    \mathbf{V}=((v_{il})), \ v_{ii} &=\text{Var}(O_i-E_i), \ v_{il}=\text{Cov}(O_i-E_i,O_l-E_l),
+\end{align}
+
+where the number of groups being compares is $G\geq 2$. The log-rank statistic can be thought of as assigning uniform weights to each failture time. Consider the following formulation of the log-rank statistic:
+
+\begin{equation}
+\text{Weighted log-rank statistic}=\frac{\left(\sum_f w(t_{(f)})(m_{if}-e_{if})\right)^2}{\text{Var}\left(\sum_f w(t_{(f)})(m_{if}-e_{if})\right)},
+\end{equation} where $w(.)$ is some weight function. The regular log-rank statistic takes $w(t_{(f)})=1$ however, if we alter this we can emphasize certain failure times. For example the Wilcoxon test sets $w(t_f)=n_f$, the number at risk. This causes earlier failures to receive more weight. This is used to assess the effect of a treatment on survival when changes are best seen early own in the trial. The Tarone-Ware test sets $w(t_f)=\sqrt{n_f}$, the square root of the number at risk. The Peto test sets $w(t_f)=\tilde{s}(t_{(f)})$, a survival estimate that differs slightly from the KM estimator. The Flemington-Harrington test sets $w(t_f)=\hat{S}(t_{(f-1)})^p\times[1-\hat{S}(t_{(f-1)})]^q$. This statistic allows the user to specify if they want more weight on earlier or later survival times.
+
+## The Cox Proportional Hazards Model
+
+The Cox Proportional Hazards (PH) model is used to model the effect of covariates on survival time. It does so through the estimation of hazard functions. Let $\mathbf{X}$ be a vector of covariates, then the Cox PH model is given by
+
+\begin{equation}
+h(t,\mathbf{X})=h_0(t)e^{\sum^p_{i=1}\beta_iX_i}, \label{eq:COX}
+\end{equation}
+
+where $h_(t)$ is the baseline hazard function. From $\eqref{eq:COX}$ we see this model has two important assumptions. First, notice that the variable $t$ appears only in the baseline hazard function and not in the exponential term. This is called time-independence because the covariates are independent of time. Variables like sex can be considered time-independent as they do not vary with time. If one wishes to model variables with time dependence this assumption may be relaxed in which case the extended Cox model may be used [@kleinbaum1996survival]. The second key assumption is that the hazard for one subject is proportional to the hazard of another subject. That is consider two subjects with covariates $\mathbf{X}= (X_1,\dots,X_p)$ and $\mathbf{X^*}= (X^*_1,\dots,X^*_p)$ then we assume
+
+\begin{align}
+\hat{h}(t,\mathbf{X^*})&= \hat{\theta}\hat{h}(t,\mathbf{X}), & \hat{\theta} &= \text{exp}\left\{\sum^p_{i=1}\hat{\beta_i}(X_i^*-X_i)\right\}.
+\end{align}
+
+Given this model, we are interested in estimating the regression coefficient $\mathbf{\hat{\beta}}=(\hat{\beta_1},\dots,\hat{\beta_p})$. We do so through maximum likelihood estimation. Consider the partial likelihood given by [@kumar1994proportional]
+
+\begin{equation}
+L(\beta) = \prod^k_{i=1}\frac{\text{exp}\{s_i\beta\}}{\left[\sum_{m \in R(t_{(i)})}\text{exp}\{X_m\beta\}\right]^{d_i}},
+\end{equation}
+
+where $R(t_{(i)})$ gives the risk set at $t_{(i)}$, $d_i$ is the number of tied failures at $t_{(i)}$, $m$ is number of items in $F(t_{(i)})$, $X_m$'s are covariates, and $s_i = \sum X_{iq}$ the sum of covariates observed at time $t_i$. This formulation is of particular interest as although we only consider the likelihoods of each failure time, we still use the information of censored data though the risk set $R(t_{(f)})$. Thus, we have a work around for our incomplete data. The actual algorithm to maximize this function is outside the scope of this report, however various iterative algorithms exist which in general work through first guessing a value and then moving the solution towards an optima [@kleinbaum1996survival].
+
+Another quantity of interesting in this model is the hazard ratio:
+
+\begin{equation}
+\hat{HR}=\frac{\hat{h}(t,\mathbf{X^*})}{\hat{h}(t,\mathbf{X})} = \text{exp}\left\{\sum^p_{i=1}\hat{\beta_i}(X_i^*-X_i)\right\},
+\end{equation}
+
+where $\mathbf{X^*}=(X^*_1,\dots,X^*_p)$ denotes a vector of covariates for one subject and $\mathbf{X}=(X_1,\dots,X_p)$ denotes a vector for another. The hazard ratio is usually calculated as experimental group's hazard divded by control group's hazard: if done this way $HR=1$ can be interpreted as no difference in hazard between groups, $HR<1$ means experimental treatment reduced hazard, and $HR>1$ means experimental treatment increased hazard [@barraclough2011biostatistics]. A large sample $95\%$ confidence interval for the hazard ration is given by
+
+\begin{align}
+    95\% \ CI &= \text{exp}\left\{\hat{\ell}\pm 1.96\sqrt{Var(\hat{\ell})}\right\},\\
+    \hat{\ell} &= \hat{\beta_1} + \hat{\delta_1}W_1+\dots+{\delta_k}W_k,\\
+\end{align}
+
+where $W_j$ is an interaction effect $X_i\times X_j, \ i \neq j$, and $\hat{\delta_j}$ is the corresponding estimated coefficient.
+
+Hazard functions estimated using the Cox PH model are adjusted for covaraites. Thus, using the relationship in $\eqref{eq:SH_rel}$ we may obtain estimated survival curves adjusted for covariates. That is, the survival function for the Cox PH model is given by
+
+\begin{equation}
+\hat{S}(t,\mathbf{X}) = \hat{S_0}^{\text{exp}\{\sum_{i=1}^p \hat{\beta}_i X_i\}}.
+\end{equation}
+
+First, the SCAD and LASSO methods are introduced for variable selection in the Cox's Proportional Hazards Model. Then results from [@fan2002variable] are replicated which compares these variable selection methods with AIC and BIC best subset selection. Finally a dataset is introduced to which SCAD and LASSO will be applied for my MATH 686 project.
+
+\newpage
+
+# Variable Selection {#sec-varselect}
+
+Selecting significant predictors is an important issue in any modeling paradigm. In this section we discuss 4 well known criteria for variable and compare them in a simulation study. First we discuss the Akaike's information criterion (AIC) and the Bayesian information criterion (BIC). Consider a dataset $D$ and let $n$ be the amount of information in the data---the number of samples in our case. Consider a set of models where the $k$th model has likelihood $p(D|\theta_k;M_k)$. In general we are interested in a trade-off between parsimony and predictive power. That is, we would like a model to have the least complexity possible while still accounting for the variance seen in the data. A popular way to achieve this is to make use of a penalized model selection criteria, generally of the form [@kuha2004aic]
+
+\begin{equation}
+2[l(\hat{\theta_2})-l(\hat{\theta_1})]-a(p_2-p_1)\sim \chi^2_{(p_2-p_1)},
+\end{equation}
+
+where for two candidate models $M_1$ and $M_2$ with parameter vectors $\theta_1,\ \text{dim }\theta_1=p_1$ and $\theta_2,\ \text{dim }\theta_2=p_2$, and positive constant $a$, we perform a likelihood ratio test with $M_1$ as the null model. This formulation can be thought of as having two components, a fit component and a complexity component. The difference in log-likelihoods assess how well the model fits the data and increases with the number of predictors. The difference in the the dimensions of $\theta_k$ penalizes increasing the number of predictors in $M_2$ and thus penalizes increasing the complexity of the alternative model. There are many information criteria of the above form, however the two most popular, AIC and BIC, are given by
+
+\begin{align}
+\text{AIC} &= 2[l(\hat{\theta_2})-l(\hat{\theta_1})]-2(p_2-p_1), \text{ and }\\
+\text{BIC} &= 2[l(\hat{\theta_2})-l(\hat{\theta_1})]-\text{log }n(p_2-p_1).
+\end{align}
+
+In regression contexts, best AIC/BIC subset selection refers to fitting all possible combinations of models and selecting the one that minimizes either criterion.
+
+Another philosophy in variable selection is to penalize the likelihood function of the model such that variables are automatically selected during the model fitting process. Consider independent samples $(\mathbf{x}_i,Y_i)$ with conditional density $f_i(y_i;\mathbf{X}^T_i,\beta)$ and let $\ell_i=\text{log}f_i$. Then a general form of penalized likelihood, given by [@fan2002variable], is
+
+\begin{equation}
+\sum^n_{i=1}\ell_i{y_i;\mathbf{x}_i^T\beta}-n\sum^d_{j=1}p_\lambda(|\beta_j|)
+\end{equation}
+
+where $d$ is the dimension of $\beta$, $p_\lambda(.)$ is some penalty function and $\lambda$ is a tuning parameter. Selecting a function $p_\lambda(.)$ amounts to selecting a variable selection method. In this section we will consider two penalties, the Least Absolute Shrinkage and Selection Operator (LASSO) and Smoothly Clipped Absolute Deviation (SCAD), given by
+
+\begin{align}
+p_\lambda(|\theta|)&=\lambda|\theta|  \text{ and } \\
+p_\lambda(\theta) &= I(\theta\leq\lambda) + \frac{(a\lambda-\theta)_+}{(a-1)\lambda}I(\theta>\lambda),
+\end{align}
+
+where $a > 2$ and $\theta > 0$. In general, a value of $a=3.7$ is suggested by [@fan2002variable]. It has been shown that the SCAD penalty is an improvment upon the LASSO penalty in that it display oracle properties when the correct tuning parameter is selected. That is, regression coefficients that are 0 in the true model are estimated as such when using the SCAD penalty.
+
+\newpage
+
+# Simulation Study
+
+In this section, we mimic [@fan2002variable], and assess variable selection techniques through a simulation study. Consider covariate vector $\mathbf{X}$ and prediction $\hat{\mu}(\mathbf{X})$. Then, the prediction error is defined as
+
+\begin{equation}
+\text{PE}(\hat{\mu}) = \mathbb{E}_{(\mathbf{X},Y)}[Y-\hat{\mu}(\mathbf{X})]^2,
+\end{equation}
+
+where $(\mathbf{X},Y)$ is some new observation. It can be shown, with baseline hazard set to $1$, that
+
+\begin{equation}
+\mu(\mathbf{X}) = \text{exp}\{-\mathbf{X}^T\beta\}
+\end{equation}
+
+implying model error is given by
+
+\begin{equation}
+\mathbb{E}\left[\text{exp}\{-\mathbf{X}^T\mathbf{\hat{\beta}}\} - \text{exp}\{-\mathbf{X}^T \beta_0\}\right]^2 \label{modeler}
+\end{equation}
+
+In this section $100$ datasets are simulated with $n=75$ and $n=100$ observations from the exponential hazard model
+
+\begin{equation}
+h(t|\mathbf{x}) = \text{exp}(\mathbf{x}^T\beta)
+\end{equation}
+
+where $\beta = (0.8, 0, 0, 1, 0, 0, 0.6, 0)^T$ and $x_i$'s are marginally standard normal with correlation $\rho=0.5$, Furthermore, censoring times are exponentially distributed with mean $U\text{exp}(\mathbf{x^T\beta_0})$, $U\sim \text{Uniform}(1,3)$. Our variable selection procedures are compared to the maxium partial likelihood estimated model using the Median of Relative Model Errors (MRME), the ratio of of the model errors defined in $\eqref{modeler}$. Additionally we record the average number of correct and incorrect coefficients estimated to be 0. The results of these simulations can be seen in @tbl-two. Standard deviations of regression coefficients can be seen in @tbl-three for each variable selection technique as well.
+
+\newpage
+
+```{r, warning=FALSE, message=FALSE,echo=FALSE}
+library(MASS)
+library(survival)
+library(glmnet)
+library(ncvreg)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(gtools)
+library(parallel)
+library(dplyr)
+```
+
+```{r, warning=FALSE, message=FALSE,echo=FALSE}
+lasso_scad_cox_sim = function(N,n){   # N:simulation times; n:data pts
+  Beta = c(0.8,0,0,1,0,0,0.6,0)
+  p = length(Beta) # number of coeff
+  corr = matrix(NA,p,p)
+  x = matrix(NA,n,p)
+
+  ME_part = rep(NA,N) # To store model error
+  ME_LASSO = rep(NA,N)
+  Beta_part_all = matrix(NA,N,p)
+  Beta_LASSO_all = matrix(NA,N,p)
+
+  # ME_part_2 = rep(NA,N) # To store model error
+  ME_SCAD = rep(NA,N)
+  # Beta_part_all_2 = matrix(NA,N,p)
+  Beta_SCAD_all = matrix(NA,N,p)
+
+
+  t = 1
+  while(t <= N){
+    # print(t)
+    # Step1: Set up correlation matrix
+    for(i in 1:p){
+      for(j in 1:p){
+        corr[i,j] = (0.5)^(abs(i-j))
+      }
+    }
+
+    # Step2: Simulate n data pts
+    x = mvrnorm(n, rep(0,p), Sigma = corr)
+    x = scale(x) #scale to make sure coeff are in same unit
+
+    # Step3: Generate time "y" using h(t)
+    y = rexp(n,rate=exp(x %*% Beta))
+
+    # Step4: Generating censoring time "cen" using mean U*h(t)
+    U = runif(n, min = 1, max = 3) # U is uniformly distributed on [1,3]
+    cen = U
+
+    # Step5: Add status based on censoring time "cen" and actual survival time "y"
+    status = as.numeric(y <= cen) # 1 if death, 0 if censored
+
+    # Step6: Fit by Cox's PH model with LASSO
+    time = pmin(y,cen) # time until death or censoring
+    fit_LASSO = cv.glmnet(x, Surv(time,status), family = "cox",alpha=1) 
+    fit_SCAD <-  cv.ncvsurv(x, Surv(time,status), penalty = "SCAD",gamma=3.7)
+
+    Beta_LASSO = as.vector(coef(fit_LASSO, s = fit_LASSO$lambda.min))
+    Beta_SCAD <- as.vector(coef(fit_SCAD, s = fit_SCAD$lambda.min))
+
+    Beta_LASSO_all[t,] =  Beta_LASSO # Store the estimated beta simulated this time
+    Beta_SCAD_all[t,] <- Beta_SCAD
+
+    # Step7: Fit by Cox's PH model with partial likelihood by default
+    # so that we can compute MRME later
+    fit_part = coxph(Surv(time,status)~x)
+    Beta_part = as.numeric(coef(fit_part))
+    Beta_part_all[t,] = Beta_part
+
+    # Step8: Compute Model Error
+    # ME_part[t] =  t(exp(x%*%Beta_part_all[t,])-exp(x%*%Beta))%*%(exp(x%*%Beta_part_all[t,])-exp(x%*%Beta))
+    # ME_LASSO[t] = t(exp(x%*%Beta_LASSO_all[t,])-exp(x%*%Beta))%*%(exp(x%*%Beta_LASSO_all[t,])-exp(x%*%Beta))
+    # ME_SCAD[t] = t(exp(x%*%Beta_SCAD_all[t,])-exp(x%*%Beta))%*%(exp(x%*%Beta_SCAD_all[t,])-exp(x%*%Beta))
+
+    ME_part[t] =  mean((exp(-x%*%Beta_part_all[t,])-exp(-x%*%Beta))^2)
+    ME_LASSO[t] = mean((exp(-x%*%Beta_LASSO_all[t,])-exp(-x%*%Beta))^2)
+    ME_SCAD[t] = mean((exp(-x%*%Beta_SCAD_all[t,])-exp(-x%*%Beta))^2)
+
+    t = t+1
+  }
+
+  # Take mean, std of each coeff
+  Beta_part_mean = colMeans(Beta_part_all)
+  Beta_LASSO_mean = colMeans(Beta_LASSO_all)
+  Beta_SCAD_mean <- colMeans(Beta_SCAD_all)
+
+  Beta_part_std = apply(Beta_part_all,2,sd)
+  Beta_LASSO_std = apply(Beta_LASSO_all,2,sd)
+  Beta_SCAD_std = apply(Beta_SCAD_all,2,sd)
+
+  # Count avg correct and incorrect zero coeff of LASSO model
+  avg_correct_LASSO = mean(rowSums(abs(Beta_LASSO_all[,c(2,3,5,6,8)])<0.01))
+  avg_correct_SCAD = mean(rowSums(abs(Beta_SCAD_all[,c(2,3,5,6,8)])<0.01))
+
+  avg_incorrect_LASSO = mean(rowSums(abs(Beta_LASSO_all[,c(1,4,7)])<0.01))
+  avg_incorrect_SCAD = mean(rowSums(abs(Beta_SCAD_all[,c(1,4,7)])<0.01))
+
+
+  # Generate Table
+  list(
+    Initial_Beta = Beta,
+    Estimate_Beta_LASSO = Beta_LASSO_mean,
+    Estimate_Beta_SCAD = Beta_SCAD_mean,
+    Simulate_Beta_LASSO_std = Beta_LASSO_std,
+    Simulate_Beta_SCAD_std = Beta_SCAD_std,
+    Ave_Num_of_Zero_coeff_LASSO = c(avg_correct_LASSO,avg_incorrect_LASSO),
+    Ave_Num_of_Zero_coeff_SCAD = c(avg_correct_SCAD,avg_incorrect_SCAD),
+    MRME_LASSO = median(ME_LASSO/ME_part) * 100,
+    MRME_SCAD = median(ME_SCAD/ME_part) * 100
+  )
+}
+
+
+set.seed(87460945)
+lasso_scad_cox_sim_75.out <- lasso_scad_cox_sim(N = 100, n = 75)
+lasso_scad_cox_sim_100.out <- lasso_scad_cox_sim(N = 100, n = 100)
+```
+
+```{r,echo=FALSE}
+bic_simulation <- function(N, n) {
+  Beta <- c(0.8, 0, 0, 1, 0, 0, 0.6, 0)  # True coefficients
+  p <- length(Beta) 
+  Beta_part_all = matrix(NA, N, p)
+  ME_part = rep(NA, N)
+
+  combinations_list <- lapply(1:p, function(r) {
+    comb <- combinations(n = p, r = r)
+    # Pad the combinations with NA to ensure they all have p columns
+    padded_comb <- matrix(NA, nrow = nrow(comb), ncol = p)
+    for (i in 1:nrow(comb)) {
+      padded_comb[i, comb[i, ]] <- comb[i, ]
+    }
+    return(padded_comb)
+  })
+  all_combinations <- do.call(rbind, combinations_list)
+  m <- nrow(all_combinations)
+
+  t <- 1
+  best_fit_AIC <- vector("list", N)
+  best_fit_BIC <- vector("list", N)
+  best_AICs <- numeric(N)
+  best_BICs <- numeric(N)
+  best_fit_AIC_indices <- vector("list", N)
+  best_fit_BIC_indices <- vector("list", N)
+  ME_AIC <- numeric(N)
+  ME_BIC <- numeric(N)
+
+  while (t <= N) {
+    # Step 1: Generate correlation matrix
+    corr <- matrix(NA, p, p)
+    for (i in 1:p) {
+      for (j in 1:p) {
+        corr[i, j] <- (0.5) ^ (abs(i - j))
+      }
+    }
+
+    # Step 2: Simulate data points
+    x <- mvrnorm(n, rep(0, p), Sigma = corr)
+    x <- scale(x) # Scale to make sure coefficients are in the same unit
+
+    # Step 3: Generate survival time "y" using h(t)
+    y <- rexp(n, rate = exp(x %*% Beta))
+
+    # Step 4: Generate censoring time "cen"
+    U = runif(n, min = 1, max = 3) # U is uniformly distributed on [1,3]
+    cen = U
+    
+    # Step 5: Add status based on censoring time "cen" and actual survival time "y"
+    status <- as.numeric(y <= cen) # 1 if death, 0 if censored
+
+    # Step 6: Fit Cox PH model for each combination of covariates
+    time <- pmin(y, cen) # Time until death or censoring
+    
+    fit_part = coxph(Surv(time, status) ~ x)
+    Beta_part = as.numeric(coef(fit_part))
+    Beta_part_all[t, ] = Beta_part
+    
+    AICs <- rep(Inf, m)
+    BICs <- rep(Inf, m)
+    fits <- vector("list", m)
+    combination_indices <- vector("list", m)
+
+    for (i in 1:m) {
+      covariate_indices <- which(!is.na(all_combinations[i, ]))
+      covariates <- x[, covariate_indices, drop = FALSE]
+      fit <- tryCatch(coxph(Surv(time, status) ~ covariates), error = function(e) NULL)
+      
+      if (!is.null(fit)) {
+        fits[[i]] <- fit
+        AICs[i] <- AIC(fit)
+        BICs[i] <- BIC(fit)
+        combination_indices[[i]] <- covariate_indices
+      }
+    }
+    best_AIC_idx <- which.min(AICs)
+    best_BIC_idx <- which.min(BICs)
+
+ if (is.finite(AICs[best_AIC_idx])) {
+  best_fit_AIC[[t]] <- fits[[best_AIC_idx]]
+  best_fit_AIC_indices[[t]] <- combination_indices[[best_AIC_idx]]
+  names(best_fit_AIC_indices[[t]]) <- paste0("Beta_", combination_indices[[best_AIC_idx]])
+  best_AICs[t] <- AICs[best_AIC_idx]
+} else {
+  best_fit_AIC[[t]] <- NULL
+  best_fit_AIC_indices[[t]] <- NULL
+  best_AICs[t] <- NA
+}
+
+if (is.finite(BICs[best_BIC_idx])) {
+  best_fit_BIC[[t]] <- fits[[best_BIC_idx]]
+  best_fit_BIC_indices[[t]] <- combination_indices[[best_BIC_idx]]
+  names(best_fit_BIC_indices[[t]]) <- paste0("Beta_", combination_indices[[best_BIC_idx]])
+  best_BICs[t] <- BICs[best_BIC_idx]
+} else {
+  best_fit_BIC[[t]] <- NULL
+  best_fit_BIC_indices[[t]] <- NULL
+  best_BICs[t] <- NA
+}
+
+
+    # Step 7: Compute Model Error for AIC and BIC models
+    if (!is.null(best_fit_AIC_indices[[t]])) {
+      selected_indices_AIC <- best_fit_AIC_indices[[t]]
+      Beta_AIC <- numeric(p)
+      Beta_AIC[selected_indices_AIC] <- coef(best_fit_AIC[[t]])
+      ME_AIC[t] <- mean((exp(-x %*% Beta_AIC) - exp(-x %*% Beta))^2)
+    } else {
+      ME_AIC[t] <- NA
+    }
+
+    if (!is.null(best_fit_BIC_indices[[t]])) {
+      selected_indices_BIC <- best_fit_BIC_indices[[t]]
+      Beta_BIC <- numeric(p)
+      Beta_BIC[selected_indices_BIC] <- coef(best_fit_BIC[[t]])
+      ME_BIC[t] <- mean((exp(-x %*% Beta_BIC) - exp(-x %*% Beta))^2)
+      ME_part[t] <- mean((exp(-x %*% Beta_part_all[t, ]) - exp(-x %*% Beta))^2)
+    } else {
+      ME_BIC[t] <- NA
+    }
+
+    t <- t + 1
+  }
+
+  correct_zero_AIC <- rep(0, N)
+  correct_zero_BIC <- rep(0, N)
+  incorrect_nonzero_AIC <- rep(0, N)
+  incorrect_nonzero_BIC <- rep(0, N)
+
+  for (i in 1:N) {
+    true_zero_indices <- which(Beta == 0)
+    true_nonzero_indices <- which(Beta != 0)
+    
+    # For AIC
+    if (!is.null(best_fit_AIC_indices[[i]])) {
+      selected_indices_AIC <- best_fit_AIC_indices[[i]]
+      excluded_indices_AIC <- setdiff(1:length(Beta), selected_indices_AIC)
+      correct_zero_AIC[i] <- sum(excluded_indices_AIC %in% true_zero_indices)
+      incorrect_nonzero_AIC[i] <- sum(excluded_indices_AIC %in% true_nonzero_indices)
+    }
+    
+    # For BIC
+    if (!is.null(best_fit_BIC_indices[[i]])) {
+      selected_indices_BIC <- best_fit_BIC_indices[[i]]
+      excluded_indices_BIC <- setdiff(1:length(Beta), selected_indices_BIC)
+      correct_zero_BIC[i] <- sum(excluded_indices_BIC %in% true_zero_indices)
+      incorrect_nonzero_BIC[i] <- sum(excluded_indices_BIC %in% true_nonzero_indices)
+    }
+  }
+
+  avg_correct_zero_AIC <- mean(correct_zero_AIC)
+  avg_correct_zero_BIC <- mean(correct_zero_BIC)
+
+  avg_incorrect_nonzero_AIC <- mean(incorrect_nonzero_AIC)
+  avg_incorrect_nonzero_BIC <- mean(incorrect_nonzero_BIC)
+
+  tb2_AIC_BIC <- data.frame(zero_coeff_AIC = avg_correct_zero_AIC, zero_coeff_BIC = avg_correct_zero_BIC, incorrect_nonzero_AIC = avg_incorrect_nonzero_AIC, incorrect_nonzero_BIC = avg_incorrect_nonzero_BIC)
+  tb3_AIC_BIC <- data.frame(MRME_AIC = median(ME_AIC / ME_part, na.rm = TRUE) * 100, MRME_BIC = median(ME_BIC / ME_part, na.rm = TRUE) * 100)
+  
+  
+  best_fit_AIC_indices_w_cor_coef <- lapply(best_fit_AIC_indices, function(x){sum(!(names(x) %in% c("Beta_1","Beta_4", "Beta_7"))) > 0})
+  total_beta_1_AIC <- numeric(0)
+  total_beta_4_AIC <- numeric(0)
+  total_beta_7_AIC <- numeric(0)
+  idx <- 0
+  for (i in best_fit_AIC_indices_w_cor_coef) {
+    idx <- idx + 1
+    if(i==FALSE){
+      total_beta_1_AIC <- c(total_beta_1_AIC , best_fit_AIC[[idx]]$coefficients[1])
+      total_beta_4_AIC <- c(total_beta_4_AIC , best_fit_AIC[[idx]]$coefficients[2])
+      total_beta_7_AIC <- c(total_beta_7_AIC , best_fit_AIC[[idx]]$coefficients[3])
+    }
+  }
+  
+  beta_1_AIC_mean <- mean(total_beta_1_AIC)
+  beta_1_AIC_sd <- sd(total_beta_1_AIC)
+  
+  beta_4_AIC_mean <- mean(total_beta_4_AIC)
+  beta_4_AIC_sd <- sd(total_beta_4_AIC)
+  
+  beta_7_AIC_mean <- mean(total_beta_7_AIC)
+  beta_7_AIC_sd <- sd(total_beta_7_AIC)
+  
+  
+  best_fit_BIC_indices_w_cor_coef <- lapply(best_fit_BIC_indices, function(x){sum(!(names(x) %in% c("Beta_1","Beta_4", "Beta_7"))) > 0})
+  total_beta_1_BIC <- numeric(0)
+  total_beta_4_BIC <- numeric(0)
+  total_beta_7_BIC <- numeric(0)
+  idx <- 0
+  for (i in  best_fit_BIC_indices_w_cor_coef) {
+    idx <- idx + 1
+    if(i==FALSE){
+      total_beta_1_BIC <- c(total_beta_1_BIC , best_fit_BIC[[idx]]$coefficients[1])
+      total_beta_4_BIC <- c(total_beta_4_BIC , best_fit_BIC[[idx]]$coefficients[2])
+      total_beta_7_BIC <- c(total_beta_7_BIC , best_fit_BIC[[idx]]$coefficients[3])
+    }
+  }
+  
+  beta_1_BIC_mean <- mean(total_beta_1_BIC,na.rm=TRUE)
+  beta_1_BIC_sd <- sd(total_beta_1_BIC,na.rm=TRUE)
+  
+  beta_4_BIC_mean <- mean(total_beta_4_BIC,na.rm=TRUE)
+  beta_4_BIC_sd <- sd(total_beta_4_BIC,na.rm=TRUE)
+  
+  beta_7_BIC_mean <- mean(total_beta_7_BIC,na.rm=TRUE)
+  beta_7_BIC_sd <- sd(total_beta_7_BIC,na.rm=TRUE)
+      
+ 
+
+  beta_1_stats_AIC <- c(mean = beta_1_AIC_mean,
+                        sd = beta_1_AIC_sd)
+  beta_4_stats_AIC <- c(mean = beta_4_AIC_mean,
+                        sd = beta_4_AIC_sd)
+  beta_7_stats_AIC <- c(mean = beta_7_AIC_mean,
+                        sd = beta_7_AIC_sd)
+  
+  beta_1_stats_BIC <- c(mean = beta_1_BIC_mean,
+                        sd = beta_1_BIC_sd)
+  beta_4_stats_BIC <- c(mean = beta_4_BIC_mean,
+                        sd = beta_4_BIC_sd)
+  beta_7_stats_BIC <- c(mean = beta_7_BIC_mean,
+                        sd = beta_7_BIC_sd)
+  
+  beta_stats <- data.frame(beta_1_stats_AIC, beta_4_stats_AIC, beta_7_stats_AIC, beta_1_stats_BIC, beta_4_stats_BIC, beta_7_stats_BIC)
+
+  list(tb2_AIC_BIC = tb2_AIC_BIC, tb3_AIC_BIC = tb3_AIC_BIC, beta_stats = beta_stats)
+}
+
+aic_bic_simulation_75.out <- bic_simulation(N = 100, n = 75)
+aic_bic_simulation_100.out <- bic_simulation(N = 100, n = 100)
+```
+
+```{r,echo=FALSE}
+library(knitr)
+
+data <- data.frame(
+  Column1 = c("**n=75**","SCAD","LASSO","AIC","BIC","**n=100**","SCAD","LASSO","AIC","BIC"),
+  Column2 = c("",round(lasso_scad_cox_sim_75.out$MRME_SCAD,4) ,
+              round(lasso_scad_cox_sim_75.out$MRME_LASSO,4),
+              round(aic_bic_simulation_75.out$tb3_AIC_BIC$MRME_AIC,4),
+              round(aic_bic_simulation_75.out$tb3_AIC_BIC$MRME_BIC,4),
+              "",
+              round(lasso_scad_cox_sim_100.out$MRME_SCAD,4),
+              round(lasso_scad_cox_sim_100.out$MRME_LASSO,4),
+              round(aic_bic_simulation_100.out$tb3_AIC_BIC$MRME_AIC,4),
+              round(aic_bic_simulation_100.out$tb3_AIC_BIC$MRME_BIC,4)),
+  Column3 = c("",
+              round(lasso_scad_cox_sim_75.out$Ave_Num_of_Zero_coeff_SCAD[1],4),
+              round(lasso_scad_cox_sim_75.out$Ave_Num_of_Zero_coeff_LASSO[1],4),
+              round(aic_bic_simulation_75.out$tb2_AIC_BIC$zero_coeff_AIC,4),
+              round(aic_bic_simulation_75.out$tb2_AIC_BIC$zero_coeff_BIC,4),
+              "",
+              round(lasso_scad_cox_sim_100.out$Ave_Num_of_Zero_coeff_SCAD[1],4),
+              round(lasso_scad_cox_sim_100.out$Ave_Num_of_Zero_coeff_LASSO[1],4),
+              round(aic_bic_simulation_100.out$tb2_AIC_BIC$zero_coeff_AIC,4),
+              round(aic_bic_simulation_100.out$tb2_AIC_BIC$zero_coeff_BIC,4)),
+  Column4 = c("",
+              round(lasso_scad_cox_sim_75.out$Ave_Num_of_Zero_coeff_SCAD[2],4),
+              round(lasso_scad_cox_sim_75.out$Ave_Num_of_Zero_coeff_LASSO[2],4),
+              round(aic_bic_simulation_75.out$tb2_AIC_BIC$incorrect_nonzero_AIC,4),
+              round(aic_bic_simulation_75.out$tb2_AIC_BIC$incorrect_nonzero_BIC,4),
+              "",
+              round(lasso_scad_cox_sim_100.out$Ave_Num_of_Zero_coeff_SCAD[2],4),
+              round(lasso_scad_cox_sim_100.out$Ave_Num_of_Zero_coeff_LASSO[2],4),
+              round(aic_bic_simulation_100.out$tb2_AIC_BIC$incorrect_nonzero_AIC,4),
+              round(aic_bic_simulation_100.out$tb2_AIC_BIC$incorrect_nonzero_BIC,4))
+)
+
+```
+
+```{r,echo=FALSE}
+data2 <- data.frame(
+  Column1 = c("**n=75**","SCAD","LASSO","AIC","BIC","**n=100**","SCAD","LASSO","AIC","BIC"),
+  Column2 = c("",round(lasso_scad_cox_sim_75.out$Simulate_Beta_SCAD_std[1],4) ,
+              round(lasso_scad_cox_sim_75.out$Simulate_Beta_LASSO_std[1],4),
+              round(aic_bic_simulation_75.out$beta_stats$beta_1_stats_AIC[2],4),
+              round(aic_bic_simulation_75.out$beta_stats$beta_1_stats_BIC[2],4),
+              "",
+              round(lasso_scad_cox_sim_100.out$Simulate_Beta_SCAD_std[1],4),
+              round(lasso_scad_cox_sim_100.out$Simulate_Beta_LASSO_std[1],4),
+              round(aic_bic_simulation_100.out$beta_stat$beta_1_stats_AIC[2],4),
+              round(aic_bic_simulation_100.out$beta_stats$beta_1_stats_BIC[2],4)),
+  Column3 = c("",
+              round(lasso_scad_cox_sim_75.out$Simulate_Beta_SCAD_std[4],4) ,
+              round(lasso_scad_cox_sim_75.out$Simulate_Beta_LASSO_std[4],4),
+              round(aic_bic_simulation_75.out$beta_stats$beta_4_stats_AIC[2],4),
+              round(aic_bic_simulation_75.out$beta_stats$beta_4_stats_BIC[2],4),
+              "",
+              round(lasso_scad_cox_sim_100.out$Simulate_Beta_SCAD_std[4],4),
+              round(lasso_scad_cox_sim_100.out$Simulate_Beta_LASSO_std[4],4),
+              round(aic_bic_simulation_100.out$beta_stats$beta_4_stats_AIC[2],4),
+              round(aic_bic_simulation_100.out$beta_stats$beta_4_stats_BIC[2],4)),
+  Column4 = c("",round(lasso_scad_cox_sim_75.out$Simulate_Beta_SCAD_std[7],4) ,
+              round(lasso_scad_cox_sim_75.out$Simulate_Beta_LASSO_std[7],4),
+              round(aic_bic_simulation_75.out$beta_stats$beta_7_stats_AIC[2],4),
+              round(aic_bic_simulation_75.out$beta_stats$beta_7_stats_BIC[2],4),
+              "",
+              round(lasso_scad_cox_sim_100.out$Simulate_Beta_SCAD_std[7],4),
+              round(lasso_scad_cox_sim_100.out$Simulate_Beta_LASSO_std[7],4),
+              round(aic_bic_simulation_100.out$beta_stats$beta_7_stats_AIC[2],4),
+              round(aic_bic_simulation_100.out$beta_stats$beta_7_stats_BIC[2],4))
+)
+```
+
+\newpage
+
+```{r}
+#| label: tbl-two
+
+kable(data, col.names = c("Method", "MRME(%)", "Aver. no. cor. 0 coeff.", "Aver. no. incor. 0 coeff."),caption="test")
+```
+
+```{r}
+#| label: tbl-three
+kable(data2, col.names = c("Method", "Beta1 SD", "Beta4 SD", "Beta7 SD"),caption="test")
+```
+
+\newpage
+
+# Application
+
+Next we consider the applications of LASSO, SCAD, AIC, and BIC variable selection methods on real data. We use a subset of the Mayo Clinic Primary Biliary Cholangitis (PBC) data. PBC is an autoimmune disease which damages the liver's bile ducts leading to cirrhosis and eventually death [@therneau2000cox]. The dataset contains 418 cases of PBC, 312 of which are from a randomized trial and 106 cases of patients not present in the trial, but agreed to be tracked. The data used are available in the `survival` R package under the variable `pbc`. A table of covariates present in the data is available below [@therneau2015package].
+
+| Variable | Description |
+|------------------------------------|------------------------------------|
+| age | in years |
+| albumin | serum albumin (g/dl) |
+| ast | aspartate aminotransferase, once called SGOT (U/ml) |
+| bili | serum bilirubin (mg/dl) |
+| chol | serum cholesterol (mg/dl) |
+| copper | urine copper (ug/day) |
+| edema | 0 no edema, 0.5 untreated or successfully treated, 1 edema despite diuretic therapy |
+| protime | standardized blood clotting time |
+| sex | m/f |
+| stage | histologic stage of disease (needs biopsy) |
+| status | status at endpoint, 0/1/2 for censored, transplant, dead |
+| time | number of days between registration and the earlier of death, transplantation, or study analysis in July, 1986 |
+
+: Description of the Mayo Clinic Primary Biliary Cholangitis dataset.
+
+Fitting a full Cox Proportional Hazards model to the data yields the following results:
+
+Look at @tbl-five and @tbl-six
+
+Next we consider using our various variable selection methods and show the results:
+
+
+Note tha diagnostic plots are avaiable in @sec-app.
+
+\newpage
+
+```{r}
+#| label: tbl-five
+
+library(survival)
+library(glmnet)
+library(kableExtra)
+
+
+data("pbc", package = "survival")
+pbc <- na.omit(pbc)
+pbc <- pbc[,-1]
+
+y <- with(pbc, Surv(time, status == 2))  # status == 2 indicates death
+x <- data.matrix(pbc[, !(names(pbc) %in% c("time", "status","trig","platelet","alk.phos","spiders","hepato","trt","ascites"))])
+
+x2 <- pbc[, !(names(pbc) %in% c("trig","platelet","alk.phos","spiders","hepato","trt","ascites"))]
+
+# Use cross validation to get best lambda
+cv_lasso_cox <- cv.glmnet(x, y, family = "cox", alpha = 1)
+best_lambda <- cv_lasso_cox$lambda.min
+
+# Fit optimal model
+final_lasso_cox <- glmnet(x, y, family = "cox", alpha = 1, lambda = best_lambda)
+
+# Fit the Cox model with all covariates
+cox_model_all <- coxph(Surv(time, status == 2) ~ ., data = x2)
+
+# Extract and modify the summary table
+cox_summary_all <- summary(cox_model_all)$coefficients
+cox_summary_all <- as.data.frame(cox_summary_all)
+
+# Define the significance level
+alpha <- 0.05
+
+# Format p-values: Bold if p-value is below alpha
+cox_summary_all$p_value <- ifelse(cox_summary_all[, "Pr(>|z|)"] < alpha,
+                                  paste0("**", formatC(cox_summary_all[, "Pr(>|z|)"], format = "e", digits = 2), "**"),
+                                  formatC(cox_summary_all[, "Pr(>|z|)"], format = "e", digits = 2))
+
+# Display the table with kableExtra
+kable(cox_summary_all,caption="Test")
+```
+
+```{r}
+library(ncvreg)
+scad_cox_path <- ncvsurv(x, y, penalty = "SCAD")
+
+cv_scad_cox <- cv.ncvsurv(x, y, penalty = "SCAD")
+
+best_lambda_scad <- cv_scad_cox$lambda.min
+```
+
+```{r}
+#| label: tbl-six
+
+
+# Define the outcome as a Surv object for time-to-event analysis
+ # y <- Surv(pbc$time, pbc$status == 2)  # status == 2 indicates death
+ # 
+ # # Get the predictor names (excluding time, status, and id)
+ # predictor_names <- names(pbc)[!(names(pbc) %in% c("time", "status", "id","trig","platelet","alk.phos","spiders","hepato","trt","ascites"))]
+ # 
+ # # Generate all possible combinations of predictors
+ # combinations <- unlist(lapply(1:length(predictor_names), function(x) {
+ #   combn(predictor_names, x, simplify = FALSE)
+ # }), recursive = FALSE)
+ # 
+ # # Create a cluster for parallel processing using 15 cores
+ # num_cores <- 15
+ # cl <- makeCluster(num_cores)
+ # clusterEvalQ(cl, library(survival))  # Load necessary libraries on each node
+ # clusterExport(cl, c("pbc", "y", "combinations"))  # Export data and combinations to cluster nodes
+ # 
+ # # Define a function to fit a model and calculate AIC and BIC
+ # fit_model <- function(predictors) {
+ #   formula <- as.formula(paste("y ~", paste(predictors, collapse = " + ")))
+ #   model <- coxph(formula, data = pbc)
+ #   aic <- AIC(model)
+ #   bic <- BIC(model)
+ #   return(list(model = model, AIC = aic, BIC = bic))
+ # }
+ # 
+ # # Run the model fitting in parallel across all combinations
+ # results <- parLapply(cl, combinations, fit_model)
+ # 
+ # stopCluster(cl)
+ # 
+ # # Extract the best models based on AIC and BIC
+ # aic_values <- sapply(results, function(x) x$AIC)
+ # bic_values <- sapply(results, function(x) x$BIC)
+ # 
+ # best_model_AIC <- results[[which.min(aic_values)]]$model
+ # best_model_BIC <- results[[which.min(bic_values)]]$model
+ # 
+ # 
+ # save(best_model_AIC,file="best_model_AIC.RData")
+ # save(best_model_BIC,file="best_model_BIC.RData")
+
+load("./data/best_model_AIC.RData")
+load("./data/best_model_BIC.RData")
+
+# coef(final_lasso_cox)
+# coef(scad_cox_path, lambda = best_lambda_scad)
+# best_model_AIC |> coef()
+# best_model_BIC |> coef()
+
+coef_lasso <- as.vector(coef(final_lasso_cox))
+names(coef_lasso) <- rownames(coef(final_lasso_cox))  # Set rownames explicitly for the LASSO coefficients
+
+coef_scad_matrix <- coef(scad_cox_path, lambda = best_lambda_scad)
+
+if (is.matrix(coef_scad_matrix)) {
+  coef_scad <- as.vector(coef_scad_matrix)
+  names(coef_scad) <- rownames(coef_scad_matrix)
+} else {
+  coef_scad <- coef_scad_matrix
+}
+
+coef_aic <- coef(best_model_AIC)
+coef_bic <- coef(best_model_BIC)
+
+var_names <- unique(c(names(coef_lasso), names(coef_scad), names(coef_aic), names(coef_bic)))
+
+coef_table <- data.frame(
+  Method = var_names,
+  LASSO = rep("-", length(var_names)),
+  SCAD = rep("-", length(var_names)),
+  AIC = rep("-", length(var_names)),
+  BIC = rep("-", length(var_names)),
+  stringsAsFactors = FALSE
+)
+rownames(coef_table) <- coef_table$Method
+coef_table$Method <- NULL
+
+for (var in var_names) {
+  if (var %in% names(coef_lasso)) {
+    coef_table[var, "LASSO"] <- sprintf("%.4f", coef_lasso[var])
+  }
+  if (var %in% names(coef_scad)) {
+    coef_table[var, "SCAD"] <- sprintf("%.4f", coef_scad[var])
+  }
+  if (var %in% names(coef_aic)) {
+    coef_table[var, "AIC"] <- sprintf("%.4f", coef_aic[var])
+  }
+  if (var %in% names(coef_bic)) {
+    coef_table[var, "BIC"] <- sprintf("%.4f", coef_bic[var])
+  }
+}
+
+coef_table[] <- lapply(coef_table, function(col) {
+  ifelse(col == "0.0000", "-", col)
+})
+
+# coef_table <- coef_table[order(rowSums(coef_table != "-"), decreasing = TRUE), ]
+
+kable(coef_table,caption = "Coefficient Estimates with Various Estimation Methods")
+```
+
+\newpage
+
+# References
+
+::: {#refs}
+:::
+
+\newpage
+
+# Appendix {#sec-app}
+
+EXPLAIN LASSO DIAGNOSTIC PLOTS HERE
+
+```{r}
+# Plot the coefficient paths for the lasso-penalized Cox model
+plot(cv_lasso_cox$glmnet.fit, xvar = "lambda", label = TRUE)
+plot(cv_lasso_cox)
+# title("LASSO Coefficient Paths for Cox Model")
+```
+
+EXPLAIN SCAD DIAGNOSTIC PLOTS HERE
+
+```{r}
+plot(cv_scad_cox)
+plot(scad_cox_path)
+```
