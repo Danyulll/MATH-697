@@ -200,6 +200,8 @@ where $a > 2$ and $\theta > 0$. In general, a value of $a=3.7$ is suggested by [
 
 # Simulation Study
 
+## Background
+
 In this section, we mimic [@fan2002variable], and assess variable selection techniques through a simulation study. Consider covariate vector $\mathbf{X}$ and prediction $\hat{\mu}(\mathbf{X})$. Then, the prediction error is defined as
 
 \begin{equation}
@@ -224,7 +226,13 @@ In this section $100$ datasets are simulated with $n=75$ and $n=100$ observation
 h(t|\mathbf{x}) = \text{exp}(\mathbf{x}^T\beta)
 \end{equation}
 
-where $\beta = (0.8, 0, 0, 1, 0, 0, 0.6, 0)^T$ and $x_i$'s are marginally standard normal with correlation $\rho=0.5$, Furthermore, censoring times are exponentially distributed with mean $U\text{exp}(\mathbf{x^T\beta_0})$, $U\sim \text{Uniform}(1,3)$. Our variable selection procedures are compared to the maxium partial likelihood estimated model using the Median of Relative Model Errors (MRME), the ratio of of the model errors defined in $\eqref{modeler}$. Additionally we record the average number of correct and incorrect coefficients estimated to be 0. The results of these simulations can be seen in @tbl-two. Standard deviations of regression coefficients can be seen in @tbl-three for each variable selection technique as well.
+where $\beta = (0.8, 0, 0, 1, 0, 0, 0.6, 0)^T$ and $x_i$'s are marginally standard normal with correlation $\rho=0.5$, Furthermore, censoring times are exponentially distributed with mean $U\text{exp}(\mathbf{x^T\beta_0})$, where $U\sim \text{Uniform}(1,3)$. Our variable selection procedures are compared to the maximum partial likelihood estimated model using the Median of Relative Model Errors (MRME), the ratio of of the model errors defined in $\eqref{modeler}$. Additionally we record the average number of correct and incorrect coefficients estimated to be 0. The results of these simulations can be seen in @tbl-two. Standard deviations of regression coefficients can be seen in @tbl-three for each variable selection technique as well.
+
+## Discussion
+
+First, consider @tbl-two. We see that overall SCAD performed best with the lowest MRME of $71.54\%$. On average it estimated $4.12$ coefficients to be 0 correctly and $0$ coefficients to be 0 incorrectly for the $n=75$ simulation. For the $n=100$ simulation it obtained an MRME of $56.28\%$. On average it estimated $4.24$ coefficients to be 0 correctly and $0.01$ coefficients to be 0 incorrectly. This is a (blank),(blank), and (blank) percent gain in MRME for $n=75$ and (blank),(blank),(blank) for $n=100$ when comparising agaisnt LASSO, AIC, and BIC respectively. All methods roughly estimated the same number of 0 coefficients correctly and incorrectly, thus this speaks to the real gain in SCAD being the imrovment in coefficient estimation.
+
+This leads us to an examination of @tbl-three where we see ...
 
 \newpage
 
@@ -343,8 +351,8 @@ lasso_scad_cox_sim = function(N,n){   # N:simulation times; n:data pts
   )
 }
 
-
-set.seed(87460945)
+global_seed <- 43097497
+set.seed(global_seed)
 lasso_scad_cox_sim_75.out <- lasso_scad_cox_sim(N = 100, n = 75)
 lasso_scad_cox_sim_100.out <- lasso_scad_cox_sim(N = 100, n = 100)
 ```
@@ -577,7 +585,7 @@ if (is.finite(BICs[best_BIC_idx])) {
 
   list(tb2_AIC_BIC = tb2_AIC_BIC, tb3_AIC_BIC = tb3_AIC_BIC, beta_stats = beta_stats)
 }
-
+set.seed(global_seed)
 aic_bic_simulation_75.out <- bic_simulation(N = 100, n = 75)
 aic_bic_simulation_100.out <- bic_simulation(N = 100, n = 100)
 ```
@@ -659,17 +667,25 @@ data2 <- data.frame(
 ```{r}
 #| label: tbl-two
 
-kable(data, col.names = c("Method", "MRME(%)", "Aver. no. cor. 0 coeff.", "Aver. no. incor. 0 coeff."),caption="test")
+kable(data, col.names = c("Method", "MRME(%)", "Aver. no. cor. 0 coeff.", "Aver. no. incor. 0 coeff."),caption="MRME values for variable selection techniques in Monte Carlo simulations of 100 replicates with $n=75$ and $n=100$ sample sizes. Additionaly, the average number of correctly estimated 0 coefficients (Aver. no. cor. 0 coeff.) and the average number of incorrectly estimated 0 coefficients (Aver. no. incor. 0 coeff.) are shown.",escape = F)
 ```
 
 ```{r}
 #| label: tbl-three
-kable(data2, col.names = c("Method", "Beta1 SD", "Beta4 SD", "Beta7 SD"),caption="test")
+kable(
+  data2,
+  col.names = c("Method", "Beta1 SD", "Beta4 SD", "Beta7 SD"),
+  caption = "Coefficient estimates and their standard deviations for the truly nonzero coefficents $\\beta_1$, $\\beta_4$, and $\\beta_7$. Results are displayed for Monte Carlo simulations of 100 replicates with sample sizes of $n=75$ and $n=100$.",
+  ,
+  escape = FALSE
+)
 ```
 
 \newpage
 
 # Application
+
+## Background
 
 Next we consider the applications of LASSO, SCAD, AIC, and BIC variable selection methods on real data. We use a subset of the Mayo Clinic Primary Biliary Cholangitis (PBC) data. PBC is an autoimmune disease which damages the liver's bile ducts leading to cirrhosis and eventually death [@therneau2000cox]. The dataset contains 418 cases of PBC, 312 of which are from a randomized trial and 106 cases of patients not present in the trial, but agreed to be tracked. The data used are available in the `survival` R package under the variable `pbc`. A table of covariates present in the data is available below [@therneau2015package].
 
@@ -678,8 +694,6 @@ Next we consider the applications of LASSO, SCAD, AIC, and BIC variable selectio
 | age | in years |
 | albumin | serum albumin (g/dl) |
 | ast | aspartate aminotransferase, once called SGOT (U/ml) |
-| bili | serum bilirubin (mg/dl) |
-| chol | serum cholesterol (mg/dl) |
 | copper | urine copper (ug/day) |
 | edema | 0 no edema, 0.5 untreated or successfully treated, 1 edema despite diuretic therapy |
 | protime | standardized blood clotting time |
@@ -690,14 +704,14 @@ Next we consider the applications of LASSO, SCAD, AIC, and BIC variable selectio
 
 : Description of the Mayo Clinic Primary Biliary Cholangitis dataset.
 
-Fitting a full Cox Proportional Hazards model to the data yields the following results:
 
-Look at @tbl-five and @tbl-six
+## Discussion
 
-Next we consider using our various variable selection methods and show the results:
+@tbl-five displays the results of fitting a Cox Proportional Hazards model to the dataset. We see that all variables, except of sex, are considered statistically significant. Note that diagnostic plots of the proportional hazards assumption are availble in @sec-app.
+
+Next we consider @tbl-six. All models seem to agree quite closely in terms of coefficient estimation. LASSO, AIC, and BIC agree with the Cox Proportional Hazards model in identify sex as an insignificant predictor. Interestingly SCAD fails to estimate this coefficient as 0. Remaining coefficients are within 5\% of each other.
 
 
-Note tha diagnostic plots are avaiable in @sec-app.
 
 \newpage
 
@@ -712,6 +726,8 @@ library(kableExtra)
 data("pbc", package = "survival")
 pbc <- na.omit(pbc)
 pbc <- pbc[,-1]
+pbc <- pbc[,(colnames(pbc) %in% c("age","albumin","ast","copper","edema","protime","sex","stage","time","status"))]
+
 
 y <- with(pbc, Surv(time, status == 2))  # status == 2 indicates death
 x <- data.matrix(pbc[, !(names(pbc) %in% c("time", "status","trig","platelet","alk.phos","spiders","hepato","trt","ascites"))])
@@ -741,11 +757,10 @@ cox_summary_all$p_value <- ifelse(cox_summary_all[, "Pr(>|z|)"] < alpha,
                                   formatC(cox_summary_all[, "Pr(>|z|)"], format = "e", digits = 2))
 
 # Display the table with kableExtra
-kable(cox_summary_all,caption="Test")
+kable(cox_summary_all,caption="Cox Proportional Hazards model summary output")
 ```
 
 ```{r}
-library(ncvreg)
 scad_cox_path <- ncvsurv(x, y, penalty = "SCAD")
 
 cv_scad_cox <- cv.ncvsurv(x, y, penalty = "SCAD")
@@ -757,55 +772,88 @@ best_lambda_scad <- cv_scad_cox$lambda.min
 #| label: tbl-six
 
 
+data("pbc", package = "survival")
+pbc <- na.omit(pbc)
+pbc <- pbc[,-1]
+pbc <- pbc[,(colnames(pbc) %in% c("age","albumin","ast","copper","edema","protime","sex","stage","time","status"))]
+
+
+y <- with(pbc, Surv(time, status == 2))  # status == 2 indicates death
+x <- data.matrix(pbc[, !(names(pbc) %in% c("time", "status","trig","platelet","alk.phos","spiders","hepato","trt","ascites"))])
+
+x2 <- pbc[, !(names(pbc) %in% c("trig","platelet","alk.phos","spiders","hepato","trt","ascites"))]
+
+# Use cross validation to get best lambda
+cv_lasso_cox <- cv.glmnet(x, y, family = "cox", alpha = 1)
+best_lambda <- cv_lasso_cox$lambda.min
+
+# Fit optimal model
+final_lasso_cox <- glmnet(x, y, family = "cox", alpha = 1, lambda = best_lambda)
+
+# Fit the Cox model with all covariates
+cox_model_all <- coxph(Surv(time, status == 2) ~ ., data = x2)
+
+# Extract and modify the summary table
+cox_summary_all <- summary(cox_model_all)$coefficients
+cox_summary_all <- as.data.frame(cox_summary_all)
+
+# Define the significance level
+alpha <- 0.05
+
+# Format p-values: Bold if p-value is below alpha
+cox_summary_all$p_value <- ifelse(cox_summary_all[, "Pr(>|z|)"] < alpha,
+                                  paste0("**", formatC(cox_summary_all[, "Pr(>|z|)"], format = "e", digits = 2), "**"),
+                                  formatC(cox_summary_all[, "Pr(>|z|)"], format = "e", digits = 2))
+
+# Display the table with kableExtra
+kable(cox_summary_all,caption="Cox Proportional Hazards model summary output")
+
+
+library(ncvreg)
+scad_cox_path <- ncvsurv(x, y, penalty = "SCAD")
+
+cv_scad_cox <- cv.ncvsurv(x, y, penalty = "SCAD")
+
+best_lambda_scad <- cv_scad_cox$lambda.min
+
+
 # Define the outcome as a Surv object for time-to-event analysis
- # y <- Surv(pbc$time, pbc$status == 2)  # status == 2 indicates death
- # 
- # # Get the predictor names (excluding time, status, and id)
- # predictor_names <- names(pbc)[!(names(pbc) %in% c("time", "status", "id","trig","platelet","alk.phos","spiders","hepato","trt","ascites"))]
- # 
- # # Generate all possible combinations of predictors
- # combinations <- unlist(lapply(1:length(predictor_names), function(x) {
- #   combn(predictor_names, x, simplify = FALSE)
- # }), recursive = FALSE)
- # 
- # # Create a cluster for parallel processing using 15 cores
- # num_cores <- 15
- # cl <- makeCluster(num_cores)
- # clusterEvalQ(cl, library(survival))  # Load necessary libraries on each node
- # clusterExport(cl, c("pbc", "y", "combinations"))  # Export data and combinations to cluster nodes
- # 
- # # Define a function to fit a model and calculate AIC and BIC
- # fit_model <- function(predictors) {
- #   formula <- as.formula(paste("y ~", paste(predictors, collapse = " + ")))
- #   model <- coxph(formula, data = pbc)
- #   aic <- AIC(model)
- #   bic <- BIC(model)
- #   return(list(model = model, AIC = aic, BIC = bic))
- # }
- # 
- # # Run the model fitting in parallel across all combinations
- # results <- parLapply(cl, combinations, fit_model)
- # 
- # stopCluster(cl)
- # 
- # # Extract the best models based on AIC and BIC
- # aic_values <- sapply(results, function(x) x$AIC)
- # bic_values <- sapply(results, function(x) x$BIC)
- # 
- # best_model_AIC <- results[[which.min(aic_values)]]$model
- # best_model_BIC <- results[[which.min(bic_values)]]$model
- # 
- # 
- # save(best_model_AIC,file="best_model_AIC.RData")
- # save(best_model_BIC,file="best_model_BIC.RData")
+y <- Surv(pbc$time, pbc$status == 2)  # status == 2 indicates death
 
-load("./data/best_model_AIC.RData")
-load("./data/best_model_BIC.RData")
+# Get the predictor names (excluding time, status, and id)
+predictor_names <- names(pbc)[!(names(pbc) %in% c("time", "status", "id"))]
 
-# coef(final_lasso_cox)
-# coef(scad_cox_path, lambda = best_lambda_scad)
-# best_model_AIC |> coef()
-# best_model_BIC |> coef()
+# Generate all possible combinations of predictors
+combinations <- unlist(lapply(1:length(predictor_names), function(x) {
+  combn(predictor_names, x, simplify = FALSE)
+}), recursive = FALSE)
+
+# Create a cluster for parallel processing using 15 cores
+num_cores <- 5
+cl <- makeCluster(num_cores)
+clusterEvalQ(cl, library(survival))  # Load necessary libraries on each node
+clusterExport(cl, c("pbc", "y", "combinations"))  # Export data and combinations to cluster nodes
+
+# Define a function to fit a model and calculate AIC and BIC
+fit_model <- function(predictors) {
+  formula <- as.formula(paste("y ~", paste(predictors, collapse = " + ")))
+  model <- coxph(formula, data = pbc)
+  aic <- AIC(model)
+  bic <- BIC(model)
+  return(list(model = model, AIC = aic, BIC = bic))
+}
+
+# Run the model fitting in parallel across all combinations
+results <- parLapply(cl, combinations, fit_model)
+
+stopCluster(cl)
+
+# Extract the best models based on AIC and BIC
+aic_values <- sapply(results, function(x) x$AIC)
+bic_values <- sapply(results, function(x) x$BIC)
+
+best_model_AIC <- results[[which.min(aic_values)]]$model
+best_model_BIC <- results[[which.min(bic_values)]]$model
 
 coef_lasso <- as.vector(coef(final_lasso_cox))
 names(coef_lasso) <- rownames(coef(final_lasso_cox))  # Set rownames explicitly for the LASSO coefficients
@@ -854,10 +902,24 @@ coef_table[] <- lapply(coef_table, function(col) {
   ifelse(col == "0.0000", "-", col)
 })
 
-# coef_table <- coef_table[order(rowSums(coef_table != "-"), decreasing = TRUE), ]
-
 kable(coef_table,caption = "Coefficient Estimates with Various Estimation Methods")
 ```
+
+# Future Work
+
+In the case of correlated data often the proprotional hazards assumption of the Cox model can be violated. A popular solution to such a violation is known as the Frailty model. This model assumes a hazard rates are multiplied by some constant. That is, for a multiplicative constant $u$ the hazard rate for the $j$th subject in the $ith$ subgroup is [@fan2002variable]:
+
+\begin{equation}
+h_{ij}(t|x_{ij},u_i) = h_0(t)u_i\text{exp}(x_{ij}^T,\beta).
+\end{equation}
+
+A frailty is defined as a random block effect that acts on all subjects in a grouping. The $u_i$'s are each random variables associated with a frailty and in general are assumed gamma distributed with mean 1. This gives rise to density
+
+\begin{equation}
+g(u) = \frac{\alpha^\alpha u^{\alpha - 1 \text{exp}(-\alpha u)}}{\Gamma(\alpha)}
+\end{equation}
+
+[@fan2002variable] show it is simple to derive a penalized form of this models log-likelihood which gives rise to an estimation method for both SCAD and LASSO variants of this model. Interesting future work could compare and contrast this methods in a simulation method similar to what is done in this report. The Frailty model has the potential to greatly outperform any of the other methods discussed as the failing to meet the proportional hazards assumption in the Cox proportional hazards model introduces a significant amount of bias.
 
 \newpage
 
@@ -869,6 +931,28 @@ kable(coef_table,caption = "Coefficient Estimates with Various Estimation Method
 \newpage
 
 # Appendix {#sec-app}
+
+This appendix contains some supplementary materia to support modelling decisions. First, consider testing the proportional hazards assumption for our subset of the pbc dataset. We use the Schoenfeld test [@grambsch1994proportional].
+
+```{r}
+#| label: tbl-app1
+
+ph_test <- cox.zph(cox_model_all)
+kable(ph_test$table[,c(1,3)],caption="First Schoenfeld test for proportional hazards assumption in the Cox Proportional Hazards model.",col.names = c("Test Statistic","p-value"))
+```
+
+At a significance level of 5% we fail to reject the global test statistic for violation of the proportional hazards assumption. We do see that edema is the only potentially problematic varaible in that, for an individual test, we would reject the null hypothesis at the 5\% level, indicating it violates the proportional hazards assumption. To further investigate this variable we may look at its Schoenfeld plot
+
+```{r}
+#| label: edema-plot
+#| fig-cap: "Schoenfeld Plot for Edema covariate. Little to no trend indicates that the variable may be considered for use in the Cox Proportional Hazards model."
+
+plot(ph_test, var = "edema",main="Schoenfeld Plot for Edema")
+```
+
+Overall all we see very little trend therefore we choose to include this variable and accept the result from the global test statistic.
+
+
 
 EXPLAIN LASSO DIAGNOSTIC PLOTS HERE
 
