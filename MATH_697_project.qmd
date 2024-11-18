@@ -200,42 +200,6 @@ where $a > 2$ and $\theta > 0$. In general, a value of $a=3.7$ is suggested by [
 
 # Simulation Study
 
-## Background
-
-In this section, we mimic [@fan2002variable], and assess variable selection techniques through a simulation study. Consider covariate vector $\mathbf{X}$ and prediction $\hat{\mu}(\mathbf{X})$. Then, the prediction error is defined as
-
-\begin{equation}
-\text{PE}(\hat{\mu}) = \mathbb{E}_{(\mathbf{X},Y)}[Y-\hat{\mu}(\mathbf{X})]^2,
-\end{equation}
-
-where $(\mathbf{X},Y)$ is some new observation. It can be shown, with baseline hazard set to $1$, that
-
-\begin{equation}
-\mu(\mathbf{X}) = \text{exp}\{-\mathbf{X}^T\beta\}
-\end{equation}
-
-implying model error is given by
-
-\begin{equation}
-\mathbb{E}\left[\text{exp}\{-\mathbf{X}^T\mathbf{\hat{\beta}}\} - \text{exp}\{-\mathbf{X}^T \beta_0\}\right]^2 \label{modeler}
-\end{equation}
-
-In this section $100$ datasets are simulated with $n=75$ and $n=100$ observations from the exponential hazard model
-
-\begin{equation}
-h(t|\mathbf{x}) = \text{exp}(\mathbf{x}^T\beta)
-\end{equation}
-
-where $\beta = (0.8, 0, 0, 1, 0, 0, 0.6, 0)^T$ and $x_i$'s are marginally standard normal with correlation $\rho=0.5$, Furthermore, censoring times are exponentially distributed with mean $U\text{exp}(\mathbf{x^T\beta_0})$, where $U\sim \text{Uniform}(1,3)$. Our variable selection procedures are compared to the maximum partial likelihood estimated model using the Median of Relative Model Errors (MRME), the ratio of of the model errors defined in $\eqref{modeler}$. Additionally we record the average number of correct and incorrect coefficients estimated to be 0. The results of these simulations can be seen in @tbl-two. Standard deviations of regression coefficients can be seen in @tbl-three for each variable selection technique as well.
-
-## Discussion
-
-First, consider @tbl-two. We see that overall SCAD performed best with the lowest MRME of $71.54\%$. On average it estimated $4.12$ coefficients to be 0 correctly and $0$ coefficients to be 0 incorrectly for the $n=75$ simulation. For the $n=100$ simulation it obtained an MRME of $56.28\%$. On average it estimated $4.24$ coefficients to be 0 correctly and $0.01$ coefficients to be 0 incorrectly. This is a (blank),(blank), and (blank) percent gain in MRME for $n=75$ and (blank),(blank),(blank) for $n=100$ when comparising agaisnt LASSO, AIC, and BIC respectively. All methods roughly estimated the same number of 0 coefficients correctly and incorrectly, thus this speaks to the real gain in SCAD being the imrovment in coefficient estimation.
-
-This leads us to an examination of @tbl-three where we see ...
-
-\newpage
-
 ```{r, warning=FALSE, message=FALSE,echo=FALSE}
 library(MASS)
 library(survival)
@@ -662,13 +626,47 @@ data2 <- data.frame(
 )
 ```
 
-\newpage
+
+## Background
+
+In this section, we mimic [@fan2002variable], and assess variable selection techniques through a simulation study. Consider covariate vector $\mathbf{X}$ and prediction $\hat{\mu}(\mathbf{X})$. Then, the prediction error is defined as
+
+\begin{equation}
+\text{PE}(\hat{\mu}) = \mathbb{E}_{(\mathbf{X},Y)}[Y-\hat{\mu}(\mathbf{X})]^2,
+\end{equation}
+
+where $(\mathbf{X},Y)$ is some new observation. It can be shown, with baseline hazard set to $1$, that
+
+\begin{equation}
+\mu(\mathbf{X}) = \text{exp}\{-\mathbf{X}^T\beta\}
+\end{equation}
+
+implying model error is given by
+
+\begin{equation}
+\mathbb{E}\left[\text{exp}\{-\mathbf{X}^T\mathbf{\hat{\beta}}\} - \text{exp}\{-\mathbf{X}^T \beta_0\}\right]^2 \label{modeler}
+\end{equation}
+
+In this section $100$ datasets are simulated with $n=75$ and $n=100$ observations from the exponential hazard model
+
+\begin{equation}
+h(t|\mathbf{x}) = \text{exp}(\mathbf{x}^T\beta)
+\end{equation}
+
+where $\beta = (0.8, 0, 0, 1, 0, 0, 0.6, 0)^T$ and $x_i$'s are marginally standard normal with correlation $\rho=0.5$, Furthermore, censoring times are exponentially distributed with mean $U\text{exp}(\mathbf{x^T\beta_0})$, where $U\sim \text{Uniform}(1,3)$. Our variable selection procedures are compared to the maximum partial likelihood estimated model using the Median of Relative Model Errors (MRME), the ratio of of the model errors defined in $\eqref{modeler}$. Additionally we record the average number of correct and incorrect coefficients estimated to be 0. The results of these simulations can be seen in @tbl-two. Standard deviations of regression coefficients can be seen in @tbl-three for each variable selection technique as well.
+
+## Discussion
+
+Consider the first Monte Carlo simulation of @tbl-two. We see that for a sample size of $n=75$, LASSO performs best with an MRME of $44.06\%$ however, it interestingly had the worst number of correctly estimated 0 coefficients. This disagrees with the results of [@fan2002variable], which found that SCAD had the lowest MRME. SCAD did estimate more correct 0 coefficients than LASSO but both methods fall short of the performance of AIC and BIC in this category. As we increase the amount of data however, SCAD begins to greatly outperform the other variable selection techniques. We see that SCAD obtained an MRME of $49.33\%$ which is $43.55\%$, $54.10\%$, and $18.29\%$ decrease in MRME when compared to LASSO, AIC, and BIC respectively. In terms of correctly estimated 0 coefficients SCAD performs better than LASSO and AIC but fails to outperform BIC. LASSO performed the worst and these results suggest that the LASSO penalty is not aggressive enough to handle this dataset. Said another way, the LASSO model introduces more bias when compared to its other variable selection counterparts. All methods across both simulations had comparable results for the average number of incorrectly estimated 0 coefficients.
 
 ```{r}
 #| label: tbl-two
 
 kable(data, col.names = c("Method", "MRME(%)", "Aver. no. cor. 0 coeff.", "Aver. no. incor. 0 coeff."),caption="MRME values for variable selection techniques in Monte Carlo simulations of 100 replicates with $n=75$ and $n=100$ sample sizes. Additionaly, the average number of correctly estimated 0 coefficients (Aver. no. cor. 0 coeff.) and the average number of incorrectly estimated 0 coefficients (Aver. no. incor. 0 coeff.) are shown.",escape = F)
 ```
+
+
+Next @tbl-three is examined. We see that in both simulations SCAD had the most varied coefficients estimates. Overall LASSO and SCAD had somewhat similar standard deviations and AIC and BIC consistently had the lowest standard deviations. This suggests the SCAD variable selection is most sensitive to the data while AIC and BIC performed consistently across sample realizations. While this simulation suggests that the SCAD variable selection is the least robust to sample variation, further analysis into the sensitivity of these methodologies is required to say anything definitive.
 
 ```{r}
 #| label: tbl-three
@@ -681,60 +679,23 @@ kable(
 )
 ```
 
+Overall, these results suggest SCAD performs best in situations with larger sample sizes, greatly outperforming LASSO, AIC, and BIC in terms of MRME and being comparable to BIC in terms of the average correct number of estimated 0 coefficients. 
 \newpage
 
 # Application
 
-## Background
-
-Next we consider the applications of LASSO, SCAD, AIC, and BIC variable selection methods on real data. We use a subset of the Mayo Clinic Primary Biliary Cholangitis (PBC) data. PBC is an autoimmune disease which damages the liver's bile ducts leading to cirrhosis and eventually death [@therneau2000cox]. The dataset contains 418 cases of PBC, 312 of which are from a randomized trial and 106 cases of patients not present in the trial, but agreed to be tracked. The data used are available in the `survival` R package under the variable `pbc`. A table of covariates present in the data is available below [@therneau2015package].
-
-| Variable | Description |
-|------------------------------------|------------------------------------|
-| age | in years |
-| albumin | serum albumin (g/dl) |
-| ast | aspartate aminotransferase, once called SGOT (U/ml) |
-| copper | urine copper (ug/day) |
-| edema | 0 no edema, 0.5 untreated or successfully treated, 1 edema despite diuretic therapy |
-| protime | standardized blood clotting time |
-| sex | m/f |
-| stage | histologic stage of disease (needs biopsy) |
-| status | status at endpoint, 0/1/2 for censored, transplant, dead |
-| time | number of days between registration and the earlier of death, transplantation, or study analysis in July, 1986 |
-
-: Description of the Mayo Clinic Primary Biliary Cholangitis dataset.
-
-
-## Discussion
-
-@tbl-five displays the results of fitting a Cox Proportional Hazards model to the dataset. We see that all variables, except of sex, are considered statistically significant. Note that diagnostic plots of the proportional hazards assumption are availble in @sec-app.
-
-Next we consider @tbl-six. All models seem to agree quite closely in terms of coefficient estimation. LASSO, AIC, and BIC agree with the Cox Proportional Hazards model in identify sex as an insignificant predictor. Interestingly SCAD fails to estimate this coefficient as 0. Remaining coefficients are within 5\% of each other.
-
-
-
-\newpage
-
 ```{r}
-#| label: tbl-five
-
-library(survival)
-library(glmnet)
-library(kableExtra)
-
-
+set.seed(87460945)
 data("pbc", package = "survival")
 pbc <- na.omit(pbc)
 pbc <- pbc[,-1]
 pbc <- pbc[,(colnames(pbc) %in% c("age","albumin","ast","copper","edema","protime","sex","stage","time","status"))]
+pbc$sex <- factor(pbc$sex)
 
 
 y <- with(pbc, Surv(time, status == 2))  # status == 2 indicates death
 x <- data.matrix(pbc[, !(names(pbc) %in% c("time", "status","trig","platelet","alk.phos","spiders","hepato","trt","ascites"))])
 
-x2 <- pbc[, !(names(pbc) %in% c("trig","platelet","alk.phos","spiders","hepato","trt","ascites"))]
-
-# Use cross validation to get best lambda
 cv_lasso_cox <- cv.glmnet(x, y, family = "cox", alpha = 1)
 best_lambda <- cv_lasso_cox$lambda.min
 
@@ -742,7 +703,7 @@ best_lambda <- cv_lasso_cox$lambda.min
 final_lasso_cox <- glmnet(x, y, family = "cox", alpha = 1, lambda = best_lambda)
 
 # Fit the Cox model with all covariates
-cox_model_all <- coxph(Surv(time, status == 2) ~ ., data = x2)
+cox_model_all <- coxph(Surv(time, status == 2) ~ ., data= pbc)
 
 # Extract and modify the summary table
 cox_summary_all <- summary(cox_model_all)$coefficients
@@ -755,86 +716,29 @@ alpha <- 0.05
 cox_summary_all$p_value <- ifelse(cox_summary_all[, "Pr(>|z|)"] < alpha,
                                   paste0("**", formatC(cox_summary_all[, "Pr(>|z|)"], format = "e", digits = 2), "**"),
                                   formatC(cox_summary_all[, "Pr(>|z|)"], format = "e", digits = 2))
-
-# Display the table with kableExtra
-kable(cox_summary_all,caption="Cox Proportional Hazards model summary output")
 ```
 
-```{r}
+```{r,results='hide'}
+library(parallel)
+set.seed(87460945)
 scad_cox_path <- ncvsurv(x, y, penalty = "SCAD")
-
 cv_scad_cox <- cv.ncvsurv(x, y, penalty = "SCAD")
-
-best_lambda_scad <- cv_scad_cox$lambda.min
-```
-
-```{r}
-#| label: tbl-six
-
-
-data("pbc", package = "survival")
-pbc <- na.omit(pbc)
-pbc <- pbc[,-1]
-pbc <- pbc[,(colnames(pbc) %in% c("age","albumin","ast","copper","edema","protime","sex","stage","time","status"))]
-
-
-y <- with(pbc, Surv(time, status == 2))  # status == 2 indicates death
-x <- data.matrix(pbc[, !(names(pbc) %in% c("time", "status","trig","platelet","alk.phos","spiders","hepato","trt","ascites"))])
-
-x2 <- pbc[, !(names(pbc) %in% c("trig","platelet","alk.phos","spiders","hepato","trt","ascites"))]
-
-# Use cross validation to get best lambda
-cv_lasso_cox <- cv.glmnet(x, y, family = "cox", alpha = 1)
-best_lambda <- cv_lasso_cox$lambda.min
-
-# Fit optimal model
-final_lasso_cox <- glmnet(x, y, family = "cox", alpha = 1, lambda = best_lambda)
-
-# Fit the Cox model with all covariates
-cox_model_all <- coxph(Surv(time, status == 2) ~ ., data = x2)
-
-# Extract and modify the summary table
-cox_summary_all <- summary(cox_model_all)$coefficients
-cox_summary_all <- as.data.frame(cox_summary_all)
-
-# Define the significance level
-alpha <- 0.05
-
-# Format p-values: Bold if p-value is below alpha
-cox_summary_all$p_value <- ifelse(cox_summary_all[, "Pr(>|z|)"] < alpha,
-                                  paste0("**", formatC(cox_summary_all[, "Pr(>|z|)"], format = "e", digits = 2), "**"),
-                                  formatC(cox_summary_all[, "Pr(>|z|)"], format = "e", digits = 2))
-
-# Display the table with kableExtra
-kable(cox_summary_all,caption="Cox Proportional Hazards model summary output")
-
-
-library(ncvreg)
-scad_cox_path <- ncvsurv(x, y, penalty = "SCAD")
-
-cv_scad_cox <- cv.ncvsurv(x, y, penalty = "SCAD")
-
 best_lambda_scad <- cv_scad_cox$lambda.min
 
 
-# Define the outcome as a Surv object for time-to-event analysis
-y <- Surv(pbc$time, pbc$status == 2)  # status == 2 indicates death
+y <- Surv(pbc$time, pbc$status == 2)
 
-# Get the predictor names (excluding time, status, and id)
 predictor_names <- names(pbc)[!(names(pbc) %in% c("time", "status", "id"))]
 
-# Generate all possible combinations of predictors
 combinations <- unlist(lapply(1:length(predictor_names), function(x) {
   combn(predictor_names, x, simplify = FALSE)
 }), recursive = FALSE)
 
-# Create a cluster for parallel processing using 15 cores
 num_cores <- 5
 cl <- makeCluster(num_cores)
-clusterEvalQ(cl, library(survival))  # Load necessary libraries on each node
-clusterExport(cl, c("pbc", "y", "combinations"))  # Export data and combinations to cluster nodes
+clusterEvalQ(cl, library(survival)) 
+clusterExport(cl, c("pbc", "y", "combinations"))
 
-# Define a function to fit a model and calculate AIC and BIC
 fit_model <- function(predictors) {
   formula <- as.formula(paste("y ~", paste(predictors, collapse = " + ")))
   model <- coxph(formula, data = pbc)
@@ -843,12 +747,10 @@ fit_model <- function(predictors) {
   return(list(model = model, AIC = aic, BIC = bic))
 }
 
-# Run the model fitting in parallel across all combinations
 results <- parLapply(cl, combinations, fit_model)
 
 stopCluster(cl)
 
-# Extract the best models based on AIC and BIC
 aic_values <- sapply(results, function(x) x$AIC)
 bic_values <- sapply(results, function(x) x$BIC)
 
@@ -856,7 +758,7 @@ best_model_AIC <- results[[which.min(aic_values)]]$model
 best_model_BIC <- results[[which.min(bic_values)]]$model
 
 coef_lasso <- as.vector(coef(final_lasso_cox))
-names(coef_lasso) <- rownames(coef(final_lasso_cox))  # Set rownames explicitly for the LASSO coefficients
+names(coef_lasso) <- rownames(coef(final_lasso_cox))
 
 coef_scad_matrix <- coef(scad_cox_path, lambda = best_lambda_scad)
 
@@ -901,10 +803,51 @@ for (var in var_names) {
 coef_table[] <- lapply(coef_table, function(col) {
   ifelse(col == "0.0000", "-", col)
 })
+```
+
+## Background
+
+Next we consider the applications of LASSO, SCAD, AIC, and BIC variable selection methods on real data. We use a subset of the Mayo Clinic Primary Biliary Cholangitis (PBC) data. PBC is an autoimmune disease which damages the liver's bile ducts leading to cirrhosis and eventually death [@therneau2000cox]. The dataset contains 418 cases of PBC, 312 of which are from a randomized trial and 106 cases of patients not present in the trial, but agreed to be tracked. The data used are available in the `survival` R package under the variable `pbc`. A table of covariates present in the data is available below [@therneau2015package].
+
+| Variable | Description |
+|------------------------------------|------------------------------------|
+| age | in years |
+| albumin | serum albumin (g/dl) |
+| ast | aspartate aminotransferase, once called SGOT (U/ml) |
+| copper | urine copper (ug/day) |
+| edema | 0 no edema, 0.5 untreated or successfully treated, 1 edema despite diuretic therapy |
+| protime | standardized blood clotting time |
+| sex | m/f |
+| stage | histologic stage of disease (needs biopsy) |
+| status | status at endpoint, 0/1/2 for censored, transplant, dead |
+| time | number of days between registration and the earlier of death, transplantation, or study analysis in July, 1986 |
+
+: Description of the Mayo Clinic Primary Biliary Cholangitis dataset.
+
+
+## Discussion
+
+@tbl-five displays the results of fitting a Cox Proportional Hazards model to the dataset. We see that all variables, excluding sex, are considered to be statistically significant. There seems to be some debate as to whether or not sex is an important variable in PBC outcomes. Studies such as [@smyk2012sex] and [@lleo2016evolving] find that PBC is far more rare in men and presents with some different symptoms. Specifically, [@lleo2016evolving] discusses that the historical consensus has been that sex does not affect survival times for PBC, but there is new data to suggest otherwise. Note that diagnostic plots of the proportional hazards assumption, and any discussion surrounding them, are available in @sec-app.
+
+```{r}
+#| label: tbl-five
+
+cox_summary_all[,-ncol(cox_summary_all)] <- lapply(cox_summary_all[,-ncol(cox_summary_all)], function(x){round(x,4)})
+
+cox_summary_all$coef <- cox_summary_all$coef |> as.character()
+
+kable(cox_summary_all,caption="Cox Proportional Hazards model summary output. Varaibles found to be significant at the 5% level are bold.")
+```
+
+Next we consider @tbl-six. All models seem to agree quite closely in terms of coefficient estimation. LASSO, AIC, and BIC agree with the base Cox Proportional Hazards model in identifying sex as an insignificant predictor. Meanwhile, SCAD disagrees and estimates this coefficient to be -0.1778. Interestingly this correspond to SCAD identifying sex as reducing hazard which potentially agrees with the new studies saying sex differences do result in different survival times. Remaining coefficients are within 5\% of each other.
+
+```{r}
+#| label: tbl-six
 
 kable(coef_table,caption = "Coefficient Estimates with Various Estimation Methods")
 ```
 
+\newpage
 # Future Work
 
 In the case of correlated data often the proprotional hazards assumption of the Cox model can be violated. A popular solution to such a violation is known as the Frailty model. This model assumes a hazard rates are multiplied by some constant. That is, for a multiplicative constant $u$ the hazard rate for the $j$th subject in the $ith$ subgroup is [@fan2002variable]:
